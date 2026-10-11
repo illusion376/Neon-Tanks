@@ -4,36 +4,49 @@ using UnityEngine;
 namespace DemoRicochet
 {
     /// <summary>
-    /// Лазерный прицел-предиктор рикошетов
-    /// рисует ломаную линию траектории через LineRenderer.
+    /// Бирюзовый пунктирный прицел с прогнозом одного рикошета.
+    /// Реальный снаряд продолжает использовать свои настройки отскоков.
     /// </summary>
     [RequireComponent(typeof(LineRenderer))]
     public class RicochetAimLine : MonoBehaviour
     {
-        [Header("Настройки дальности предиктора")]
-        [Tooltip("Сколько отскоков от стен показывать (3 = вся траектория снаряда)")]
-        [Range(0, 6)]
-        public int maxReflections = 3;
+        private const int MaxReflections = 1;
 
-        [Tooltip("Максимальная суммарная длина луча в метрах (уменьши, например, до 10, чтобы показывать только часть пути)")]
+        [Header("Дальность предиктора")]
         [Range(1f, 50f)]
         public float maxTotalLength = 45f;
 
-        [Tooltip("Максимальная длина одного прямого отрезка между стенами")]
         [Range(1f, 40f)]
         public float maxStepDistance = 30f;
 
-        [Header("Геометрия снаряда (должна совпадать с RicochetBullet)")]
+        [Header("Геометрия снаряда (как у RicochetBullet)")]
         public float bulletRadius = 0.14f;
 
+        [Header("Неоновый пунктир")]
+        [ColorUsage(true, true)]
+        public Color aimColor = new Color(0.02f, 0.95f, 1f);
+
+        [Range(0.1f, 1f)]
+        public float dashLength = 0.42f;
+
+        [Range(0.05f, 0.75f)]
+        public float dashGap = 0.23f;
+
+        [Range(0.03f, 0.15f)]
+        public float dashWidth = 0.08f;
+
         private SimpleBoxTank _tank;
+        private TankHealth _tankHealth;
         private Collider _tankCollider;
         private LineRenderer _line;
-        private readonly List<Vector3> _points = new List<Vector3>(8);
+        private LineRenderer _glowLine;
+        private Material _lineMaterial;
+        private Material _glowMaterial;
+        private readonly List<Vector3> _points = new List<Vector3>(3);
 
         private void Awake()
         {
-            // Гарантируем, что на сцене только один предиктор (чтобы старый дубликат не рисовал поверх)
+            // Убираем только старые отдельные предикторы, если они остались в сцене.
             RicochetAimLine[] allLines = FindObjectsByType<RicochetAimLine>();
             for (int i = 0; i < allLines.Length; i++)
             {
@@ -53,56 +66,74 @@ namespace DemoRicochet
             SetupLineRenderer();
         }
 
-        private TankHealth _tankHealth;
-
         private void SetupLineRenderer()
         {
+            Shader shader = NeonVisuals.GroundShader;
+            if (shader == null)
+            {
+                enabled = false;
+                return;
+            }
+
             _line = GetComponent<LineRenderer>();
-            _line.useWorldSpace = true;
-            _line.startWidth = 0.08f;
-            _line.endWidth = 0.045f;
-            _line.numCapVertices = 4;
-            _line.numCornerVertices = 4;
-            _line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            _line.receiveShadows = false;
+            GameObject glowObject = new GameObject("AimGlow");
+            glowObject.transform.SetParent(transform, false);
+            _glowLine = glowObject.AddComponent<LineRenderer>();
 
-            Color aimColor = new Color(0.18f, 0.96f, 1.0f, 1.0f);
-            Shader groundShader = Resources.Load<Shader>("Shaders/NeonGround") ?? Shader.Find("Hidden/NeonTanks/Ground");
-            if (groundShader != null)
-            {
-                Material mat = new Material(groundShader);
-                mat.SetColor("_Color", aimColor);
-                mat.SetColor("_SecondaryColor", Color.white);
-                mat.SetFloat("_Glow", 1.85f);
-                mat.SetFloat("_Alpha", 0.52f);
-                mat.SetFloat("_Mode", 3f);
-                _line.material = mat;
-            }
-            else
-            {
-                Shader lineShader = Shader.Find("Sprites/Default") ?? Shader.Find("Universal Render Pipeline/Unlit");
-                if (lineShader != null)
-                {
-                    Material mat = new Material(lineShader);
-                    mat.color = aimColor;
-                    if (mat.HasProperty("_BaseColor"))
-                    {
-                        mat.SetColor("_BaseColor", aimColor);
-                    }
-                    _line.material = mat;
-                }
-            }
+            _lineMaterial = new Material(shader) { name = "AimDashCore" };
+            _glowMaterial = new Material(shader) { name = "AimDashGlow" };
+            _lineMaterial.SetFloat("_Mode", 6f);
+            _glowMaterial.SetFloat("_Mode", 6f);
 
-            _line.startColor = new Color(0.25f, 0.95f, 1.0f, 0.88f);
-            _line.endColor = new Color(0.25f, 0.95f, 1.0f, 0.28f);
+            SetupRenderer(_line, _lineMaterial, 0.95f, 0.55f);
+            SetupRenderer(_glowLine, _glowMaterial, 0.28f, 0.10f);
+            UpdateVisualSettings();
+        }
+
+        private static void SetupRenderer(LineRenderer line, Material material, float startAlpha, float endAlpha)
+        {
+            line.sharedMaterial = material;
+            line.useWorldSpace = true;
+            line.textureMode = LineTextureMode.Tile;
+            line.alignment = LineAlignment.View;
+            line.numCapVertices = 0;
+            line.numCornerVertices = 4;
+            line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            line.receiveShadows = false;
+            line.startColor = new Color(1f, 1f, 1f, startAlpha);
+            line.endColor = new Color(1f, 1f, 1f, endAlpha);
+        }
+
+        private void UpdateVisualSettings()
+        {
+            float period = dashLength + dashGap;
+            float fill = Mathf.Clamp(dashLength / period, 0.15f, 0.9f);
+            Vector2 tiling = new Vector2(1f / period, 1f);
+
+            _line.widthMultiplier = dashWidth;
+            _glowLine.widthMultiplier = dashWidth * 3f;
+            _line.textureScale = tiling;
+            _glowLine.textureScale = tiling;
+
+            _lineMaterial.SetFloat("_DashFill", fill);
+            _glowMaterial.SetFloat("_DashFill", fill);
+            _lineMaterial.SetColor("_Color", aimColor.linear * 3f);
+            _glowMaterial.SetColor("_Color", aimColor.linear * 1.4f);
         }
 
         private void LateUpdate()
         {
+            if (_line == null || _glowLine == null) return;
+
             if (_tank == null)
             {
                 _tank = GetComponentInParent<SimpleBoxTank>() ?? FindAnyObjectByType<SimpleBoxTank>();
-                if (_tank == null) return;
+                if (_tank == null)
+                {
+                    ClearLines();
+                    return;
+                }
+
                 _tankCollider = _tank.GetComponent<Collider>();
                 _tankHealth = _tank.GetComponent<TankHealth>();
             }
@@ -113,11 +144,18 @@ namespace DemoRicochet
 
             if (_tankHealth != null && _tankHealth.IsDead)
             {
-                _line.positionCount = 0;
+                ClearLines();
                 return;
             }
 
+            UpdateVisualSettings();
             DrawPredictedPath();
+        }
+
+        private void ClearLines()
+        {
+            _line.positionCount = 0;
+            _glowLine.positionCount = 0;
         }
 
         private void DrawPredictedPath()
@@ -125,75 +163,54 @@ namespace DemoRicochet
             const float skinOffset = 0.01f;
 
             Vector3 origin = _tank.GetFireOrigin();
-            origin.y = SimpleBoxTank.ProjectileHeight;
+            origin.y = RicochetBullet.ProjectileHeight;
             Vector3 direction = _tank.AimDirection;
             direction.y = 0f;
-            if (direction.sqrMagnitude < 0.0001f)
-            {
-                direction = Vector3.forward;
-            }
-            else
-            {
-                direction.Normalize();
-            }
+            direction = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.forward;
 
             _points.Clear();
             _points.Add(origin);
 
-            float remainingTotalLength = maxTotalLength;
+            float remainingLength = maxTotalLength;
             Collider lastBouncedWall = null;
 
-            for (int bounce = 0; bounce <= maxReflections; bounce++)
+            for (int bounce = 0; bounce <= MaxReflections && remainingLength > 0.001f; bounce++)
             {
-                if (remainingTotalLength <= 0.001f)
-                    break;
+                float distance = Mathf.Min(maxStepDistance, remainingLength);
 
-                float castDistance = Mathf.Min(maxStepDistance, remainingTotalLength);
-
-                if (TrySimulateHit(origin, direction, castDistance, bounce, lastBouncedWall, out RaycastHit hit))
+                if (!TrySimulateHit(origin, direction, distance, bounce, lastBouncedWall, out RaycastHit hit))
                 {
-                    Vector3 hitCenter = origin + direction * hit.distance;
-                    hitCenter.y = SimpleBoxTank.ProjectileHeight;
-                    _points.Add(hitCenter);
-
-                    remainingTotalLength -= hit.distance;
-
-                    bool hitAnyTank = hit.collider.GetComponentInParent<TankHealth>() != null
-                                      || hit.collider.GetComponentInParent<SimpleBoxTank>() != null;
-                    if (hitAnyTank || bounce == maxReflections)
-                    {
-                        break;
-                    }
-
-                    Vector3 normal = hit.normal;
-                    normal.y = 0f;
-                    if (normal.sqrMagnitude < 0.0001f)
-                    {
-                        normal = -direction;
-                    }
-                    else
-                    {
-                        normal.Normalize();
-                    }
-
-                    direction = Vector3.Reflect(direction, normal).normalized;
-                    origin = hitCenter + normal * skinOffset;
-                    origin.y = SimpleBoxTank.ProjectileHeight;
-                    lastBouncedWall = hit.collider;
-                }
-                else
-                {
-                    Vector3 endPoint = origin + direction * castDistance;
-                    endPoint.y = SimpleBoxTank.ProjectileHeight;
+                    Vector3 endPoint = origin + direction * distance;
+                    endPoint.y = RicochetBullet.ProjectileHeight;
                     _points.Add(endPoint);
                     break;
                 }
+
+                Vector3 hitCenter = origin + direction * hit.distance;
+                hitCenter.y = RicochetBullet.ProjectileHeight;
+                _points.Add(hitCenter);
+                remainingLength -= hit.distance;
+
+                bool hitTank = hit.collider.GetComponentInParent<TankHealth>() != null
+                               || hit.collider.GetComponentInParent<SimpleBoxTank>() != null;
+                if (hitTank || bounce == MaxReflections) break;
+
+                Vector3 normal = hit.normal;
+                normal.y = 0f;
+                normal = normal.sqrMagnitude > 0.0001f ? normal.normalized : -direction;
+
+                direction = Vector3.Reflect(direction, normal).normalized;
+                origin = hitCenter + normal * skinOffset;
+                origin.y = RicochetBullet.ProjectileHeight;
+                lastBouncedWall = hit.collider;
             }
 
             _line.positionCount = _points.Count;
+            _glowLine.positionCount = _points.Count;
             for (int i = 0; i < _points.Count; i++)
             {
                 _line.SetPosition(i, _points[i]);
+                _glowLine.SetPosition(i, _points[i]);
             }
         }
 
@@ -207,10 +224,6 @@ namespace DemoRicochet
         {
             bestHit = default;
             RaycastHit[] hits = Physics.SphereCastAll(origin, bulletRadius, direction, maxDist, ~0, QueryTriggerInteraction.Ignore);
-            if (hits == null || hits.Length == 0)
-            {
-                return false;
-            }
 
             float closestDist = float.MaxValue;
             bool found = false;
@@ -218,12 +231,8 @@ namespace DemoRicochet
             for (int i = 0; i < hits.Length; i++)
             {
                 RaycastHit h = hits[i];
-                if (h.collider == null) continue;
-
-                if (h.normal.y > 0.7f) continue;
-
+                if (h.collider == null || h.normal.y > 0.7f) continue;
                 if (currentBounce == 0 && h.collider == _tankCollider) continue;
-
                 if (h.collider == lastBouncedWall && h.distance < 0.05f) continue;
 
                 if (h.distance <= 0.0001f && h.point == Vector3.zero)
@@ -252,6 +261,12 @@ namespace DemoRicochet
             }
 
             return found;
+        }
+
+        private void OnDestroy()
+        {
+            if (_lineMaterial != null) Destroy(_lineMaterial);
+            if (_glowMaterial != null) Destroy(_glowMaterial);
         }
     }
 }
