@@ -45,7 +45,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DemoRicochet.PickupItem
   pickupType: 1
-  respawnDelay: 0
+  respawnDelay: 8
   pickupRadius: 0.95
-  cycleTypeOnRespawn: 0
+  cycleTypeOnRespawn: 1
   playerOnly: 1

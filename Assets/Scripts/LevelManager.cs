@@ -95,6 +95,9 @@ namespace DemoRicochet
             if (!IsActive) return;
             if (Object.FindAnyObjectByType<SimpleArenaBuilder>() != null) return;
 
+            TankHealth.OnTankKilled -= HandleTankKilled;
+            TankHealth.OnTankKilled += HandleTankKilled;
+
             // 1. Арена нужного размера (SimpleArenaBuilder читает LevelManager.Current)
             new GameObject("SimpleArenaBuilder").AddComponent<SimpleArenaBuilder>();
 
@@ -124,16 +127,28 @@ namespace DemoRicochet
         private static void HandleTankKilled(bool killedTankWasCyan)
         {
             if (!IsActive || killedTankWasCyan || _killDropsLeft <= 0) return;
-            if (Random.value > Current.killDropChance) return;
+            if (CountAliveEnemies() <= 0) return;
+
+            float dropChance = Mathf.Max(Current.killDropChance, 0.85f);
+            if (Random.value > dropChance) return;
 
             SimpleBoxTank player = Object.FindAnyObjectByType<SimpleBoxTank>();
             if (player == null || player.Health == null || player.Health.IsDead) return;
 
             if (!TryFindDropPoint(player.transform.position, out Vector3 point)) return;
 
-            PickupType type = player.Health.currentHealth < player.Health.maxHealth
-                ? PickupType.Repair
-                : (PickupType)Random.Range(1, 4); // Shield, Speed, RapidFire
+            PickupType type;
+            if (player.Health.currentHealth <= 1 && Random.value < 0.35f)
+            {
+                type = PickupType.Repair;
+            }
+            else
+            {
+                float roll = Random.value;
+                if (roll < 0.55f) type = PickupType.RapidFire;
+                else if (roll < 0.85f) type = PickupType.Shield;
+                else type = PickupType.Speed;
+            }
 
             PickupItem drop = PickupItem.SpawnPickup("Drop_" + type, type, point);
             drop.respawnDelay = 0f;
@@ -143,16 +158,21 @@ namespace DemoRicochet
 
         private static bool TryFindDropPoint(Vector3 center, out Vector3 point)
         {
+            float[] radii = { 1.9f, 2.6f, 3.3f };
             float startAngle = Random.Range(0f, 360f);
-            for (int i = 0; i < 12; i++)
+            for (int r = 0; r < radii.Length; r++)
             {
-                float angle = (startAngle + i * 30f) * Mathf.Deg2Rad;
-                point = center + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 2.0f;
-                if (point.x < SimpleArenaBuilder.MinX + 0.8f || point.x > SimpleArenaBuilder.MaxX - 0.8f ||
-                    point.z < SimpleArenaBuilder.MinZ + 0.8f || point.z > SimpleArenaBuilder.MaxZ - 0.8f) continue;
-                if (Physics.CheckSphere(point + Vector3.up * 0.6f, 0.5f, ~0, QueryTriggerInteraction.Ignore)) continue;
-                if (IsNearOtherPickup(point)) continue;
-                return true;
+                float radius = radii[r];
+                for (int i = 0; i < 12; i++)
+                {
+                    float angle = (startAngle + i * 30f) * Mathf.Deg2Rad;
+                    point = center + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
+                    if (point.x < SimpleArenaBuilder.MinX + 0.8f || point.x > SimpleArenaBuilder.MaxX - 0.8f ||
+                        point.z < SimpleArenaBuilder.MinZ + 0.8f || point.z < SimpleArenaBuilder.MaxZ - 0.8f) continue;
+                    if (Physics.CheckSphere(point + Vector3.up * 0.6f, 0.5f, ~0, QueryTriggerInteraction.Ignore)) continue;
+                    if (IsNearOtherPickup(point)) continue;
+                    return true;
+                }
             }
             point = center;
             return false;
