@@ -5,10 +5,7 @@ using UnityEngine.Rendering;
 
 namespace DemoRicochet
 {
-    /// <summary>
-    /// Шаг 2 переноса визуала: Строит полноценную дизайнерскую неоновую арену
-    /// по данным Resources/NeonTanks/Config/environment.json и расставляет 3D FBX-укрытия.
-    /// </summary>
+
     public class SimpleArenaBuilder : MonoBehaviour
     {
         public const float MinX = -11.2f;
@@ -84,8 +81,6 @@ namespace DemoRicochet
                 _cam = camObj.AddComponent<Camera>();
             }
 
-            // Выключаем резкий Directional Light со стандартной сцены, так как шейдер NeonSurface
-            // сам считает стилизованный студийный свет и блики
             Light[] lights = FindObjectsByType<Light>();
             for (int i = 0; i < lights.Length; i++)
             {
@@ -140,11 +135,6 @@ namespace DemoRicochet
             _cam.transform.position = _cameraFocus - (rot * Vector3.forward) * 38f;
         }
 
-        /// <summary>
-        /// Строит декоративное окружение из Resources/NeonTanks/Config/environment.json:
-        /// пол с сеткой, 126 фиолетовых блоков вокруг арены, светящуюся неоновую рамку,
-        /// световые пятна по углам и летающие частицы пыли.
-        /// </summary>
         private void BuildEnvironmentFromConfig()
         {
             TextAsset envAsset = Resources.Load<TextAsset>("NeonTanks/Config/environment");
@@ -169,7 +159,6 @@ namespace DemoRicochet
             float centerX = (cfg.minX + cfg.maxX) * 0.5f;
             float centerZ = (cfg.minZ + cfg.maxZ) * 0.5f;
 
-            // 1. Пол арены с неоновой сеткой
             Material floorMat = CreateSurfaceMat(surface, "FloorGrid", ToColor(cfg.floorColor), Color.black, 0f, boundsVec);
             floorMat.SetFloat("_AmbientLift", 0.25f);
             floorMat.SetFloat("_Grid", 1f);
@@ -184,7 +173,6 @@ namespace DemoRicochet
                 floorMat);
             floorObj.AddComponent<BoxCollider>();
 
-            // 2. Нижняя тёмно-фиолетовая плоскость глубины под блоками
             Material voidMat = CreateSurfaceMat(surface, "VoidPlane", new Color(0.12f, 0.115f, 0.245f), Color.black, 0f, boundsVec);
             voidMat.SetFloat("_AmbientLift", 0.7f);
             voidMat.SetFloat("_ReceiveProjectileLights", 0f);
@@ -193,7 +181,6 @@ namespace DemoRicochet
                 new Vector3(width * 3f + 30f, 0.15f, depth * 3f + 30f),
                 voidMat);
 
-            // 3. 126 объёмных фиолетовых блоков по периметру
             if (cfg.blockPalette != null && cfg.blocks != null)
             {
                 Material[] paletteMats = new Material[cfg.blockPalette.Length];
@@ -212,7 +199,6 @@ namespace DemoRicochet
                 }
             }
 
-            // 4. Ярко-розовая неоновая рамка вокруг игрового поля
             Material rimMat = CreateSurfaceMat(surface, "NeonRim", Color.black, ToColor(cfg.rimColor), cfg.rimEmission, boundsVec);
             rimMat.SetFloat("_Rim", 0f);
             rimMat.SetFloat("_ReceiveProjectileLights", 0f);
@@ -226,7 +212,6 @@ namespace DemoRicochet
             SpawnVisualCube("RimLeftAccent", envRoot, new Vector3(cfg.minX - 2.3f, cfg.rimHeight, centerZ), new Vector3(4.6f, 0.08f, 0.08f), rimMat);
             SpawnVisualCube("RimRightAccent", envRoot, new Vector3(cfg.maxX + 2.3f, cfg.rimHeight, centerZ), new Vector3(4.6f, 0.08f, 0.08f), rimMat);
 
-            // 5. Пурпурные световые пятна по углам пола
             if (cfg.washes != null && ground != null)
             {
                 for (int i = 0; i < cfg.washes.Length; i++)
@@ -245,16 +230,12 @@ namespace DemoRicochet
                 }
             }
 
-            // 6. Летающие световые частицы в воздухе
             if (ground != null)
             {
                 CreateFloatingDust(envRoot, cfg, ground, width, depth, centerX, centerZ);
             }
         }
 
-        /// <summary>
-        /// Создаёт невидимые физические стены точно по внутренней границе неоновой рамки.
-        /// </summary>
         private void BuildPhysicsBoundaryWalls()
         {
             Transform wallsRoot = new GameObject("BoundaryColliders").transform;
@@ -273,23 +254,17 @@ namespace DemoRicochet
             CreateInvisibleWall("Bound_West", wallsRoot, new Vector3(MinX - thickness * 0.5f, 1f, centerZ), new Vector3(thickness, height, depth));
         }
 
-        /// <summary>
-        /// Расставляет 3D FBX-укрытия из дизайнерской карты (углы, центральный куб, блоки и наклонные отражатели).
-        /// </summary>
         private void BuildInteriorObstacles()
         {
             Transform obsRoot = new GameObject("Obstacles").transform;
             obsRoot.SetParent(transform, false);
 
-            // 1. Два угловых Г-образных неразрушаемых укрытия сверху
             SpawnCornerLObstacle("Cover/NT_Cover_L_Cyan", obsRoot, new Vector3(-6f, 0f, 3.8f), -180f, 1.15f, true);
             SpawnCornerLObstacle("Cover/NT_Cover_L_Magenta", obsRoot, new Vector3(6f, 0f, 3.8f), -90f, 1.15f, false);
 
-            // 2. Центральный квадратный пилон
             SpawnBoxObstacle("Cover/NT_Cover_Square", obsRoot, Vector3.zero, 0f,
                 new Vector3(1.125f, 1.15f, 1.125f), new Vector3(1.6f, 1.2f, 1.6f), true);
 
-            // 3. Два оранжевых РАЗРУШАЕМЫХ блока снизу (с полоской прочности и трещинами)
             GameObject destLeft = SpawnBoxObstacle("Cover/NT_Cover_Rect_Cyan", obsRoot, new Vector3(-4.8f, 0f, -4.1f), 0f,
                 Vector3.one, new Vector3(2.35f, 1.2f, 0.85f), true);
             SpecialObstacle.Attach(destLeft, ObstacleMode.Destructible);
@@ -298,7 +273,6 @@ namespace DemoRicochet
                 Vector3.one, new Vector3(2.35f, 1.2f, 0.85f), false);
             SpecialObstacle.Attach(destRight, ObstacleMode.Destructible);
 
-            // 4. Двое лаймовых СИЛОВЫХ ВОРОТ по бокам (с пилонами NT_Bollard, открываются по таймеру)
             GameObject gateLeft = SpawnBoxObstacle("Cover/NT_Cover_Rect_Cyan", obsRoot, new Vector3(-7.4f, 0f, -0.9f), -90f,
                 new Vector3(1f, 1.15f, 1f), new Vector3(2.35f, 1.2f, 0.85f), true);
             SpecialObstacle.Attach(gateLeft, ObstacleMode.Gate, 0f);
@@ -307,7 +281,6 @@ namespace DemoRicochet
                 new Vector3(1f, 1.15f, 1f), new Vector3(2.35f, 1.2f, 0.85f), false);
             SpecialObstacle.Attach(gateRight, ObstacleMode.Gate, 1.8f);
 
-            // 5. Три наклонных мятных ЗЕРКАЛА-ОТРАЖАТЕЛЯ под 45° (ускоряют снаряд и дают +1 рикошет)
             GameObject reflTop = SpawnBoxObstacle("Reflectors/NT_Reflector_Cyan", obsRoot, new Vector3(0.65f, 0f, 3.8f), -45f,
                 Vector3.one, new Vector3(2.2f, 1.4f, 0.24f), true);
             SpecialObstacle.Attach(reflTop, ObstacleMode.Reflective);
@@ -355,7 +328,6 @@ namespace DemoRicochet
                 model.transform.localScale = new Vector3(scaleXZ, 1f, scaleXZ);
             }
 
-            // Г-образное укрытие собирается из двух перпендикулярных BoxCollider
             BoxCollider colA = root.AddComponent<BoxCollider>();
             colA.center = new Vector3(0f * scaleXZ, 0.6f, -0.66f * scaleXZ);
             colA.size = new Vector3(2.0f * scaleXZ, 1.2f, 0.68f * scaleXZ);

@@ -2,11 +2,7 @@ using UnityEngine;
 
 namespace DemoRicochet
 {
-    /// <summary>
-    /// Шаг 5: Универсальный компонент здоровья, брони и щита (подходит и для игрока, и для ботов).
-    /// Рисует 3 неоновых деления HP над танком, вращающийся силовой щит, вспышку корпуса при попадании
-    /// и обрабатывает уничтожение с респавном через 2.3 секунды.
-    /// </summary>
+  
     public class TankHealth : MonoBehaviour
     {
         [Header("Здоровье и респавн")]
@@ -42,7 +38,6 @@ namespace DemoRicochet
         private float _protectionTimer;
         private float _hitFlashTimer;
 
-        // Визуальные элементы над танком (как в дизайнерском референсе)
         private Transform _hudRoot;
         private MeshRenderer[] _healthPips;
         private MaterialPropertyBlock _pipPropBlock;
@@ -50,7 +45,6 @@ namespace DemoRicochet
         private GameObject _speedIconGroup;
         private GameObject _rapidFireIconGroup;
 
-        // Кэш рендереров танка для белой вспышки при попадании
         private Renderer[] _modelRenderers;
         private MaterialPropertyBlock _flashPropBlock;
         private Collider _tankCollider;
@@ -102,7 +96,6 @@ namespace DemoRicochet
             _hudRoot = new GameObject("TankStatusVisuals").transform;
             _hudRoot.SetParent(transform, false);
 
-            // 1. Три деления здоровья над башней (наклонены под 58° к камере)
             Material pipMat = new Material(groundShader) { name = "HealthPipMat" };
             pipMat.SetFloat("_Mode", 2f); // Сплошная плашка
 
@@ -117,7 +110,6 @@ namespace DemoRicochet
                 _healthPips[i] = pip.GetComponent<MeshRenderer>();
             }
 
-            // 2. Энергетический щит из 3 пересекающихся колец вокруг танка
             _shieldRoot = new GameObject("EnergyShield").transform;
             _shieldRoot.SetParent(_hudRoot, false);
             _shieldRoot.localPosition = new Vector3(0f, 0.46f, 0f);
@@ -134,13 +126,11 @@ namespace DemoRicochet
                 ring.transform.localRotation = Quaternion.Euler(r == 0 ? 90f : 0f, r == 2 ? 90f : 0f, 0f);
             }
 
-            // 3. Неоновые иконки активных бонусов над полоской здоровья (молния скорости и тройной залп)
             Transform buffsRoot = new GameObject("ActiveBuffIcons").transform;
             buffsRoot.SetParent(_hudRoot, false);
             buffsRoot.localPosition = new Vector3(0f, 1.44f, 0.25f);
             buffsRoot.localRotation = Quaternion.Euler(58f, 0f, 0f);
 
-            // Иконка ускорения (Speed — бирюзовая молния из 2 наклонных штрихов)
             _speedIconGroup = new GameObject("SpeedBuffIcon");
             _speedIconGroup.transform.SetParent(buffsRoot, false);
             _speedIconGroup.transform.localPosition = new Vector3(-0.16f, 0f, 0f);
@@ -156,7 +146,6 @@ namespace DemoRicochet
             }
             _speedIconGroup.SetActive(false);
 
-            // Иконка скорострельного залпа (RapidFire — 3 золотых вертикальных штриха)
             _rapidFireIconGroup = new GameObject("RapidFireBuffIcon");
             _rapidFireIconGroup.transform.SetParent(buffsRoot, false);
             _rapidFireIconGroup.transform.localPosition = new Vector3(0.16f, 0f, 0f);
@@ -176,7 +165,6 @@ namespace DemoRicochet
         {
             float dt = Time.deltaTime;
 
-            // Обработка состояния ожидания респавна
             if (_isDead)
             {
                 _respawnTimer -= dt;
@@ -212,7 +200,6 @@ namespace DemoRicochet
                 _rapidFireIconGroup.SetActive(rapidFireTimer > 0f);
             }
 
-            // Вращение энергетического щита (показываем при стартовой защите или наличии заряда щита)
             if (_shieldRoot != null)
             {
                 bool showShield = _protectionTimer > 0f || shieldCharges > 0;
@@ -226,7 +213,6 @@ namespace DemoRicochet
                 }
             }
 
-            // Анимация белой вспышки брони после попадания
             if (_hitFlashTimer > 0f)
             {
                 _hitFlashTimer = Mathf.Max(0f, _hitFlashTimer - dt);
@@ -234,43 +220,34 @@ namespace DemoRicochet
             }
         }
 
-        /// <summary>
-        /// Вызывается при собственном выстреле танка: досрочно снимает послереспавновую неуязвимость (как в правилах коллеги).
-        /// </summary>
+
         public void NotifyFiredShot()
         {
             _protectionTimer = 0f;
         }
 
-        /// <summary>
-        /// Наносит урон танку от снаряда. Возвращает true, если снаряд должен уничтожиться о танк.
-        /// </summary>
         public bool OnHitByBullet(int damage, bool bulletIsCyan, Collider shooterCollider, int bounceCount)
         {
             if (_isDead) return false;
 
             bool isSelfHit = shooterCollider != null && shooterCollider == _tankCollider;
 
-            // Если это собственный снаряд, а самострел рикошетом выключен — поглощаем снаряд без урона
             if (isSelfHit && (!allowSelfRicochetDamage || bounceCount == 0))
             {
                 return true;
             }
 
-            // Союзный огонь (другой танк той же команды) останавливает снаряд, но урон не наносит
             if (!isSelfHit && bulletIsCyan == isCyanTeam)
             {
                 return true;
             }
 
-            // Если действует послереспавновая защита — урон не проходит
             if (_protectionTimer > 0f)
             {
                 _hitFlashTimer = 0.14f;
                 return true;
             }
 
-            // Если есть заряд бонусного щита — тратим 1 заряд щита вместо HP
             if (shieldCharges > 0)
             {
                 shieldCharges--;
@@ -291,9 +268,6 @@ namespace DemoRicochet
             return true;
         }
 
-        /// <summary>
-        /// Восстанавливает здоровье (например, при подборе аптечки).
-        /// </summary>
         public bool Heal(int amount)
         {
             if (_isDead || currentHealth >= maxHealth) return false;

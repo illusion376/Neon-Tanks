@@ -8,10 +8,7 @@ using UnityEngine.InputSystem.UI;
 
 namespace DemoRicochet
 {
-    /// <summary>
-    /// Шаг 9 (Финал): Неоновый интерфейс матча, счёт, таймер раунда, индикаторы брони/бонусов и экраны паузы/победы.
-    /// Полностью повторяет компоновку и палитру из ArenaHud.cs дизайнерского проекта.
-    /// </summary>
+
     public class GameHUD : MonoBehaviour
     {
         private static readonly Color Cyan = new Color(0.12f, 0.92f, 1.0f);
@@ -37,7 +34,6 @@ namespace DemoRicochet
         private SimpleBoxTank _playerTank;
         private TankHealth _playerHealth;
 
-        // Элементы интерфейса
         private Text _cyanScoreText;
         private Text _magentaScoreText;
         private Text _timerText;
@@ -217,14 +213,12 @@ namespace DemoRicochet
             if (_pauseOverlay != null) _pauseOverlay.SetActive(false);
             if (_resultOverlay != null) _resultOverlay.SetActive(false);
 
-            // Удаляем летящие снаряды
             RicochetBullet[] bullets = FindObjectsByType<RicochetBullet>();
             for (int i = 0; i < bullets.Length; i++)
             {
                 if (bullets[i] != null) Destroy(bullets[i].gameObject);
             }
 
-            // Сбрасываем все танки на стартовые позиции
             TankHealth[] tanks = FindObjectsByType<TankHealth>();
             for (int i = 0; i < tanks.Length; i++)
             {
@@ -266,12 +260,10 @@ namespace DemoRicochet
                 }
             }
 
-            // Плашки активных усилений (Щит, Скорость, Тройной залп)
             SetBuffChip(0, alive && _playerHealth.shieldCharges > 0, $"ЩИТ  ×{_playerHealth.shieldCharges}");
             SetBuffChip(1, alive && _playerHealth.speedBoostTimer > 0f, $"СКОРОСТЬ\n{Mathf.CeilToInt(_playerHealth.speedBoostTimer)} с");
             SetBuffChip(2, alive && _playerHealth.rapidFireTimer > 0f, $"ТРОЙНОЙ\n{Mathf.CeilToInt(_playerHealth.rapidFireTimer)} с");
 
-            // Баннер ожидания возрождения
             bool showRespawn = !alive && !_isMatchFinished;
             if (_respawnBanner != null && _respawnBanner.activeSelf != showRespawn)
             {
@@ -314,7 +306,6 @@ namespace DemoRicochet
 
             RectTransform root = canvasObj.GetComponent<RectTransform>();
 
-            // 1. Логотип в левом верхнем углу (из ArenaHud.cs)
             RectTransform brand = CreateRect("BrandBadge", root, new Vector2(220f, 54f), new Vector2(0f, 1f), new Vector2(138f, -44f));
             CreateImage("BrandAccent", brand, new Vector2(3f, 34f), new Vector2(0f, 0.5f), Vector2.zero, Cyan);
             Text brandTitle = CreateLabel("NEON  /  RICOCHET", brand, 19, White, new Vector2(200f, 26f), new Vector2(0.5f, 0.5f), new Vector2(12f, 9f), FontStyle.Bold);
@@ -322,7 +313,6 @@ namespace DemoRicochet
             Text brandSub = CreateLabel("T A N K   A R E N A", brand, 10, Muted, new Vector2(200f, 18f), new Vector2(0.5f, 0.5f), new Vector2(12f, -13f));
             brandSub.alignment = TextAnchor.MiddleLeft;
 
-            // 2. Центральная панель счёта и таймера
             RectTransform scorePanel = CreateImage("ScorePanel", root, new Vector2(268f, 92f), new Vector2(0.5f, 1f), new Vector2(0f, -53f), PanelBg).rectTransform;
             CreateImage("CyanTopLine", scorePanel, new Vector2(132f, 2.5f), new Vector2(0f, 1f), new Vector2(66f, -1f), Cyan);
             CreateImage("MagentaTopLine", scorePanel, new Vector2(132f, 2.5f), new Vector2(1f, 1f), new Vector2(-66f, -1f), Magenta);
@@ -335,12 +325,10 @@ namespace DemoRicochet
             CreateLabel($"ДО {targetScore} ОЧКОВ", scorePanel, 9, Muted, new Vector2(80f, 18f), new Vector2(0.5f, 0.5f), new Vector2(0f, -26f));
             CreateLabel("СОПЕРНИКИ", scorePanel, 9, Muted, new Vector2(88f, 18f), new Vector2(0.5f, 0.5f), new Vector2(86f, -26f));
 
-            // 3. Кнопка паузы в правом верхнем углу
             Button pauseBtn = CreateButton("PauseButton", root, "", new Vector2(54f, 48f), new Vector2(1f, 1f), new Vector2(-50f, -40f), PanelBg, () => SetPaused(!_isPaused));
             CreateImage("BarL", pauseBtn.transform, new Vector2(4f, 17f), new Vector2(0.5f, 0.5f), new Vector2(-5f, 0f), White);
             CreateImage("BarR", pauseBtn.transform, new Vector2(4f, 17f), new Vector2(0.5f, 0.5f), new Vector2(5f, 0f), White);
 
-            // 4. Нижняя панель брони
             RectTransform armorPanel = CreateImage("ArmorPanel", root, new Vector2(184f, 52f), new Vector2(0.5f, 0f), new Vector2(0f, 38f), PanelBg).rectTransform;
             CreateLabel("Б Р О Н Я", armorPanel, 10, Muted, new Vector2(140f, 18f), new Vector2(0.5f, 0.5f), new Vector2(0f, 10f), FontStyle.Bold);
             for (int i = 0; i < 3; i++)
@@ -348,7 +336,6 @@ namespace DemoRicochet
                 _armorPips[i] = CreateImage("ArmorPip_" + i, armorPanel, new Vector2(44f, 6.5f), new Vector2(0.5f, 0.5f), new Vector2((i - 1) * 50f, -9f), Cyan);
             }
 
-            // 5. Индикаторы активных бонусов над панелью брони
             Color[] chipColors = { Cyan, Mint, Gold };
             for (int i = 0; i < 3; i++)
             {
@@ -359,21 +346,18 @@ namespace DemoRicochet
                 _buffChips[i].SetActive(false);
             }
 
-            // 6. Баннер респавна
             Image respawnImg = CreateImage("RespawnBanner", root, new Vector2(360f, 48f), new Vector2(0.5f, 0.5f), new Vector2(0f, -84f), PanelBg);
             CreateImage("RespawnAccent", respawnImg.transform, new Vector2(360f, 2f), new Vector2(0.5f, 1f), new Vector2(0f, -1f), Cyan);
             _respawnText = CreateLabel("ВОЗВРАЩЕНИЕ В БОЙ  /  2", respawnImg.transform, 17, White, new Vector2(340f, 40f), new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
             _respawnBanner = respawnImg.gameObject;
             _respawnBanner.SetActive(false);
 
-            // 7. Оверлей Паузы
             _pauseOverlay = BuildModalOverlay(root, "PauseOverlay", "ПАУЗА", "Матч приостановлен  •  [Esc] продолжить", Cyan,
                 "ПРОДОЛЖИТЬ", () => SetPaused(false),
                 "НАЧАТЬ ЗАНОВО [R]", RestartMatch,
                 out _, out _, out _);
             _pauseOverlay.SetActive(false);
 
-            // 8. Оверлей Итогов матча
             _resultOverlay = BuildModalOverlay(root, "ResultOverlay", "ПОБЕДА!", "", Cyan,
                 "НОВЫЙ МАТЧ [R]", RestartMatch,
                 null, null,

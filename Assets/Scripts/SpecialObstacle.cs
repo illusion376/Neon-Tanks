@@ -5,15 +5,12 @@ namespace DemoRicochet
 {
     public enum ObstacleMode
     {
-        Destructible = 0, // Оранжевое разрушаемое укрытие с делениями прочности и трещинами
-        Reflective = 1,   // Мятная зеркальная панель (ускоряет снаряд и даёт +1 отскок)
-        Gate = 2          // Лаймовые силовые ворота с пилонами NT_Bollard, открывающиеся по таймеру
+        Destructible = 0, 
+        Reflective = 1,   
+        Gate = 2     
     }
 
-    /// <summary>
-    /// Шаг 8: Универсальный компонент интерактивных объектов арены (Destructible, Reflective, Gate).
-    /// Полностью повторяет визуал и механику из ArenaView.Gameplay.cs дизайнерского проекта.
-    /// </summary>
+
     public class SpecialObstacle : MonoBehaviour
     {
         public static readonly Color BreakableTint = new Color(1.0f, 0.42f, 0.08f);
@@ -39,19 +36,16 @@ namespace DemoRicochet
         private MeshRenderer _floorGlowRenderer;
         private Material _floorGlowMat;
 
-        // Для Destructible
         private MeshRenderer[] _healthPips;
         private MaterialPropertyBlock _pipBlock;
         private LineRenderer[] _cracks;
         private bool _isDestroyed;
         private float _rebuildTimer;
 
-        // Для Gate
         private Transform _pylonsRoot;
         private bool _isGateOpen;
         private float _gateTimer;
 
-        // Кэш неоновых слотов для перекраски и вспышки при ударе
         private struct NeonSlot
         {
             public Renderer Renderer;
@@ -109,7 +103,6 @@ namespace DemoRicochet
             Color accent = GetModeColor();
             Shader groundShader = NeonVisuals.GroundShader;
 
-            // Мягкое неоновое свечение на полу под спец-объектом
             if (groundShader != null && _floorGlowRenderer == null)
             {
                 _floorGlowMat = new Material(groundShader) { name = "ObstacleFloorGlow" };
@@ -158,14 +151,12 @@ namespace DemoRicochet
             {
                 GameObject pip = NeonVisuals.CreateEffectQuad("IntegrityPip_" + i, hudRoot, pipMat);
                 float offsetX = (i - (maxHealth - 1) * 0.5f) * 0.18f;
-                // Размещаем в мировом наклоне к камере над блоком
                 pip.transform.position = transform.position + new Vector3(offsetX, 1.48f, 0.15f);
                 pip.transform.rotation = Quaternion.Euler(58f, 0f, 0f);
                 pip.transform.localScale = new Vector3(0.14f, 0.048f, 1f);
                 _healthPips[i] = pip.GetComponent<MeshRenderer>();
             }
 
-            // 3 светящиеся трещины на верхней крышке блока (появляются по мере урона)
             _cracks = new LineRenderer[3];
             Material crackMat = new Material(groundShader) { name = "CrackBeamMat" };
             crackMat.SetFloat("_Mode", 3f);
@@ -284,7 +275,6 @@ namespace DemoRicochet
             {
                 if (_isGateOpen)
                 {
-                    // Не закрываем ворота прямо на танк, если он стоит в проёме
                     if (IsTankInsideGate())
                     {
                         _gateTimer = 0.25f;
@@ -343,9 +333,6 @@ namespace DemoRicochet
             TankHealth.SpawnRingBurst(transform.position, GateTint, 1.8f);
         }
 
-        /// <summary>
-        /// Вызывается из RicochetBullet при отскоке снаряда от этого препятствия.
-        /// </summary>
         public void OnBulletBounce(RicochetBullet bullet, Vector3 hitPoint)
         {
             _hitFlashTimer = 0.14f;
@@ -353,7 +340,6 @@ namespace DemoRicochet
 
             if (mode == ObstacleMode.Reflective && bullet != null)
             {
-                // Зеркало ускоряет снаряд и даёт +1 бонусный рикошет
                 bullet.speed = Mathf.Min(22f, bullet.speed * 1.25f);
                 bullet.maxBounces = Mathf.Min(6, bullet.maxBounces + 1);
                 TankHealth.SpawnRingBurst(hitPoint, MirrorTint, 1.35f);
@@ -415,7 +401,6 @@ namespace DemoRicochet
 
         private void RebuildDestructible()
         {
-            // Если прямо на месте блока стоит танк — ждём, пока он отъедет
             if (IsTankInsideGate())
             {
                 _rebuildTimer = 0.5f;

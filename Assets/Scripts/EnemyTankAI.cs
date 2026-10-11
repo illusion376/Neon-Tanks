@@ -2,20 +2,24 @@ using UnityEngine;
 
 namespace DemoRicochet
 {
-    /// <summary>
-    /// Шаг 6: Вражеский неоновый танк (NT_Tank_Magenta) под управлением ИИ.
-    /// Перемещается по арене, объезжая укрытия, ищет прямую наводку или угол рикошета
-    /// от стены в игрока и ведёт огонь розовыми снарядами (без отображения вражеского прицела).
-    /// </summary>
+
     public class EnemyTankAI : MonoBehaviour
     {
         public const float ProjectileHeight = 0.66f;
 
-        [Header("Параметры ИИ")]
-        public float moveSpeed = 5.4f;
-        public float bodyTurnSpeed = 360f;
-        public float turretTurnSpeed = 220f;
-        public float fireInterval = 1.65f;
+        [Header("Параметры движения ИИ")]
+        public float moveSpeed = 6.8f;
+        public float bodyTurnSpeed = 420f;
+
+        [Header("Параметры стрельбы и точности ИИ")]
+        public float turretTurnSpeed = 165f;
+        public float fireInterval = 1.85f;
+        [Tooltip("Разброс прицела бота в градусах (чем больше — тем чаще бот мажет)")]
+        [Range(0f, 25f)]
+        public float aimSpreadDegrees = 9.5f;
+        [Tooltip("Шанс (0..1), что бот вообще попытается стрелять рикошетом от стены")]
+        [Range(0f, 1f)]
+        public float ricochetAttemptChance = 0.50f;
 
         private Transform _hullTransform;
         private Transform _turretPivot;
@@ -34,11 +38,15 @@ namespace DemoRicochet
         private float _recoilTimer;
         private float _fireTimer;
         private float _waypointTimer;
+        private float _aimThinkTimer;
+        private float _currentAimError;
+        private float _stuckTimer;
+        private Vector3 _lastCheckedPos;
 
         private Vector3 _desiredAimDir = Vector3.left;
         private Vector3 _currentAimDir = Vector3.left;
         private bool _hasValidShot;
-        private Vector3 _moveDir;
+        private Vector3 _moveDir = Vector3.left;
         private Vector3 _targetWaypoint;
 
         private Rigidbody _rb;
@@ -77,7 +85,12 @@ namespace DemoRicochet
             _health.isCyanTeam = false;
             _health.allowSelfRicochetDamage = false;
 
-            _fireTimer = Random.Range(0.8f, fireInterval);
+            _fireTimer = Random.Range(0.9f, fireInterval);
+            _lastCheckedPos = transform.position;
+        }
+
+        private void Start()
+        {
             PickNewWaypoint();
         }
 
@@ -194,54 +207,81 @@ namespace DemoRicochet
         private void UpdateNavigation(float dt)
         {
             _waypointTimer -= dt;
+            _stuckTimer += dt;
+
+            if (_stuckTimer >= 0.35f)
+            {
+                float moved = Vector3.Distance(transform.position, _lastCheckedPos);
+                _lastCheckedPos = transform.position;
+                _stuckTimer = 0f;
+
+                if (moved < 0.25f)
+                {
+                    PickBestCorridorWaypoint();
+                }
+            }
+
             Vector3 toTarget = _targetWaypoint - transform.position;
             toTarget.y = 0f;
 
-            if (_waypointTimer <= 0f || toTarget.sqrMagnitude < 1.0f)
+            if (_waypointTimer <= 0f || toTarget.sqrMagnitude < 1.3f)
             {
                 PickNewWaypoint();
                 toTarget = _targetWaypoint - transform.position;
                 toTarget.y = 0f;
             }
 
-            Vector3 desiredDir = toTarget.sqrMagnitude > 0.01f ? toTarget.normalized : Vector3.zero;
+            Vector3 desiredDir = toTarget.sqrMagnitude > 0.01f ? toTarget.normalized : _moveDir;
 
-            // Проверяем препятствия впереди на высоте 0.75f (радиус 0.50f не задевает пол на y=0)
-            if (desiredDir.sqrMagnitude > 0.01f && IsDirectionBlocked(desiredDir, 1.55f, out RaycastHit hit))
+            if (IsDirectionBlocked(desiredDir, 1.85f, out RaycastHit hit))
             {
-                // Пробуем обойти препятствие слева или справа (выбираем свободный веерный луч)
-                Vector3 slideDir = Vector3.ProjectOnPlane(desiredDir, hit.normal);
-                slideDir.y = 0f;
+                Vector3 leftWhisker = Quaternion.Euler(0f, -45f, 0f) * desiredDir;
+                Vector3 rightWhisker = Quaternion.Euler(0f, 45f, 0f) * desiredDir;
 
-                if (slideDir.sqrMagnitude > 0.01f && !IsDirectionBlocked(slideDir.normalized, 1.35f, out _))
+                float leftClear = GetClearDistance(leftWhisker, 5.0f);
+                float rightClear = GetClearDistance(rightWhisker, 5.0f);
+
+                if (leftClear > 1.6f || rightClear > 1.6f)
                 {
-                    desiredDir = slideDir.normalized;
+                    desiredDir = leftClear >= rightClear ? leftWhisker : rightWhisker;
+                    _targetWaypoint = transform.position + desiredDir * Mathf.Min(4.5f, Mathf.Max(leftClear, rightClear));
+                    _waypointTimer = 1.1f;
                 }
                 else
                 {
-                    float[] angles = { 45f, -45f, 85f, -85f, 130f, -130f, 180f };
-                    for (int i = 0; i < angles.Length; i++)
+                    Vector3 slideDir = Vector3.ProjectOnPlane(desiredDir, hit.normal);
+                    slideDir.y = 0f;
+                    if (slideDir.sqrMagnitude > 0.01f && !IsDirectionBlocked(slideDir.normalized, 1.4f, out _))
                     {
-                        Vector3 altDir = Quaternion.Euler(0f, angles[i], 0f) * desiredDir;
-                        if (!IsDirectionBlocked(altDir, 1.4f, out _))
-                        {
-                            desiredDir = altDir;
-                            _targetWaypoint = transform.position + altDir * 3.2f;
-                            _waypointTimer = 0.75f;
-                            break;
-                        }
+                        desiredDir = slideDir.normalized;
+                    }
+                    else
+                    {
+                        PickBestCorridorWaypoint();
+                        Vector3 newToTarget = _targetWaypoint - transform.position;
+                        newToTarget.y = 0f;
+                        if (newToTarget.sqrMagnitude > 0.01f) desiredDir = newToTarget.normalized;
                     }
                 }
             }
 
-            _moveDir = Vector3.Lerp(_moveDir, desiredDir, Mathf.Clamp01(dt * 10f));
+            _moveDir = Vector3.Slerp(_moveDir.sqrMagnitude > 0.01f ? _moveDir : desiredDir, desiredDir, Mathf.Clamp01(dt * 8f)).normalized;
+        }
+
+        private float GetClearDistance(Vector3 dir, float maxDist)
+        {
+            if (IsDirectionBlocked(dir, maxDist, out RaycastHit hit))
+            {
+                return hit.distance;
+            }
+            return maxDist;
         }
 
         private bool IsDirectionBlocked(Vector3 dir, float dist, out RaycastHit closestWallHit)
         {
             closestWallHit = default;
             Vector3 castOrigin = new Vector3(transform.position.x, 0.75f, transform.position.z);
-            RaycastHit[] hits = Physics.SphereCastAll(castOrigin, 0.50f, dir, dist, ~0, QueryTriggerInteraction.Ignore);
+            RaycastHit[] hits = Physics.SphereCastAll(castOrigin, 0.48f, dir, dist, ~0, QueryTriggerInteraction.Ignore);
             float minDist = float.MaxValue;
             bool blocked = false;
 
@@ -262,18 +302,48 @@ namespace DemoRicochet
             return blocked;
         }
 
+        private void PickBestCorridorWaypoint()
+        {
+            float bestScore = -1f;
+            Vector3 bestDir = -_moveDir;
+
+            for (int i = 0; i < 12; i++)
+            {
+                float angle = i * 30f + Random.Range(-10f, 10f);
+                Vector3 dir = Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
+                float clearDist = GetClearDistance(dir, 9.0f);
+
+                float forwardBias = Vector3.Dot(dir, _moveDir) * 0.8f;
+                float score = clearDist + forwardBias + Random.Range(0f, 1.5f);
+                if (clearDist > 2.0f && score > bestScore)
+                {
+                    bestScore = score;
+                    bestDir = dir;
+                }
+            }
+
+            float travel = Mathf.Clamp(GetClearDistance(bestDir, 8.0f) - 0.8f, 2.0f, 7.0f);
+            _targetWaypoint = transform.position + bestDir * travel;
+            _waypointTimer = Random.Range(1.4f, 2.6f);
+        }
+
         private void PickNewWaypoint()
         {
-            _waypointTimer = Random.Range(2.0f, 3.8f);
+            if (Random.value < 0.65f)
+            {
+                PickBestCorridorWaypoint();
+                return;
+            }
+
+            _waypointTimer = Random.Range(2.2f, 3.8f);
 
             for (int attempt = 0; attempt < 16; attempt++)
             {
-                float rx = Random.Range(SimpleArenaBuilder.MinX + 1.6f, SimpleArenaBuilder.MaxX - 1.6f);
-                float rz = Random.Range(SimpleArenaBuilder.MinZ + 1.6f, SimpleArenaBuilder.MaxZ - 1.6f);
+                float rx = Random.Range(SimpleArenaBuilder.MinX + 1.8f, SimpleArenaBuilder.MaxX - 1.8f);
+                float rz = Random.Range(SimpleArenaBuilder.MinZ + 1.8f, SimpleArenaBuilder.MaxZ - 1.8f);
                 Vector3 candidate = new Vector3(rx, 0f, rz);
 
-                // Сфера на высоте 0.80f с радиусом 0.60f (нижняя точка +0.20f — выше пола арены)
-                Collider[] overlaps = Physics.OverlapSphere(candidate + Vector3.up * 0.80f, 0.60f, ~0, QueryTriggerInteraction.Ignore);
+                Collider[] overlaps = Physics.OverlapSphere(candidate + Vector3.up * 0.80f, 0.65f, ~0, QueryTriggerInteraction.Ignore);
                 bool occupied = false;
                 for (int i = 0; i < overlaps.Length; i++)
                 {
@@ -284,47 +354,49 @@ namespace DemoRicochet
                     break;
                 }
 
-                if (!occupied && Vector3.Distance(candidate, transform.position) > 2.2f)
+                if (!occupied && Vector3.Distance(candidate, transform.position) > 3.5f)
                 {
                     _targetWaypoint = candidate;
                     return;
                 }
             }
 
-            _targetWaypoint = new Vector3(
-                Mathf.Clamp(-transform.position.x * 0.5f, SimpleArenaBuilder.MinX + 2f, SimpleArenaBuilder.MaxX - 2f),
-                0f,
-                Mathf.Clamp(-transform.position.z * 0.5f, SimpleArenaBuilder.MinZ + 2f, SimpleArenaBuilder.MaxZ - 2f));
+            PickBestCorridorWaypoint();
         }
 
         private void UpdateAimAndShooting(float dt)
         {
-            _hasValidShot = false;
+            _aimThinkTimer -= dt;
 
-            if (_playerTank != null && (_playerTank.Health == null || !_playerTank.Health.IsDead))
+            if (_aimThinkTimer <= 0f)
             {
-                Vector3 myOrigin = new Vector3(transform.position.x, ProjectileHeight, transform.position.z);
-                Vector3 playerPos = new Vector3(_playerTank.transform.position.x, ProjectileHeight, _playerTank.transform.position.z);
-                Vector3 toPlayer = playerPos - myOrigin;
-                toPlayer.y = 0f;
+                _aimThinkTimer = Random.Range(0.35f, 0.55f);
+                _hasValidShot = false;
+                _currentAimError = Random.Range(-aimSpreadDegrees, aimSpreadDegrees);
 
-                // 1. Проверяем прямую видимость до игрока
-                if (toPlayer.sqrMagnitude > 0.1f && CanHitPlayerDirectly(myOrigin, toPlayer.normalized, toPlayer.magnitude))
+                if (_playerTank != null && (_playerTank.Health == null || !_playerTank.Health.IsDead))
                 {
-                    _desiredAimDir = toPlayer.normalized;
-                    _hasValidShot = true;
-                }
-                else
-                {
-                    // 2. Если игрок за укрытием — ищем выстрел через 1 рикошет от стены
-                    if (TryFindRicochetShot(myOrigin, out Vector3 bounceDir))
+                    Vector3 myOrigin = new Vector3(transform.position.x, ProjectileHeight, transform.position.z);
+                    Vector3 playerPos = new Vector3(_playerTank.transform.position.x, ProjectileHeight, _playerTank.transform.position.z);
+                    Vector3 toPlayer = playerPos - myOrigin;
+                    toPlayer.y = 0f;
+
+                    if (toPlayer.sqrMagnitude > 0.1f && CanHitPlayerDirectly(myOrigin, toPlayer.normalized, toPlayer.magnitude))
                     {
-                        _desiredAimDir = bounceDir;
+                        _desiredAimDir = Quaternion.Euler(0f, _currentAimError, 0f) * toPlayer.normalized;
                         _hasValidShot = true;
                     }
-                    else if (toPlayer.sqrMagnitude > 0.1f)
+                    else
                     {
-                        _desiredAimDir = toPlayer.normalized;
+                        if (Random.value <= ricochetAttemptChance && TryFindRicochetShot(myOrigin, out Vector3 bounceDir))
+                        {
+                            _desiredAimDir = Quaternion.Euler(0f, _currentAimError * 1.15f, 0f) * bounceDir;
+                            _hasValidShot = true;
+                        }
+                        else if (toPlayer.sqrMagnitude > 0.1f)
+                        {
+                            _desiredAimDir = Quaternion.Euler(0f, _currentAimError, 0f) * toPlayer.normalized;
+                        }
                     }
                 }
             }
@@ -337,10 +409,10 @@ namespace DemoRicochet
             if (_fireTimer <= 0f && _hasValidShot)
             {
                 float angleError = Mathf.Abs(Mathf.DeltaAngle(_aimYaw, targetAimYaw));
-                if (angleError < 10f)
+                if (angleError < 14f)
                 {
                     FireShot();
-                    _fireTimer = fireInterval + Random.Range(-0.2f, 0.35f);
+                    _fireTimer = fireInterval + Random.Range(-0.15f, 0.45f);
                 }
             }
         }
@@ -368,17 +440,17 @@ namespace DemoRicochet
         private bool TryFindRicochetShot(Vector3 origin, out Vector3 bestDir)
         {
             bestDir = Vector3.zero;
-            const int sampleDirs = 28;
+            const int sampleDirs = 14;
+            int startOffset = Random.Range(0, sampleDirs);
 
             for (int i = 0; i < sampleDirs; i++)
             {
-                float angle = i * (360f / sampleDirs);
+                int idx = (startOffset + i) % sampleDirs;
+                float angle = idx * (360f / sampleDirs);
                 Vector3 dir = Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
 
-                // Первый сегмент — до стены
-                if (TryCastFirstSegment(origin, dir, 18f, out RaycastHit wallHit))
+                if (TryCastFirstSegment(origin, dir, 16f, out RaycastHit wallHit))
                 {
-                    // Если первый же луч упирается в союзного бота — пропускаем
                     if (wallHit.collider.GetComponentInParent<TankHealth>() != null) continue;
 
                     Vector3 normal = wallHit.normal;
@@ -389,8 +461,7 @@ namespace DemoRicochet
                     Vector3 reflectDir = Vector3.Reflect(dir, normal).normalized;
                     Vector3 bounceOrigin = origin + dir * wallHit.distance + normal * 0.02f;
 
-                    // Второй сегмент — от стены в сторону игрока
-                    if (CanHitPlayerDirectly(bounceOrigin, reflectDir, 18f))
+                    if (CanHitPlayerDirectly(bounceOrigin, reflectDir, 15f))
                     {
                         bestDir = dir;
                         return true;

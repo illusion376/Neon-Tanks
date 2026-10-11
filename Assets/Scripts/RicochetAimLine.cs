@@ -3,10 +3,7 @@ using UnityEngine;
 
 namespace DemoRicochet
 {
-    /// <summary>
-    /// Лазерный прицел-предиктор рикошетов
-    /// рисует ломаную линию траектории через LineRenderer.
-    /// </summary>
+ 
     [RequireComponent(typeof(LineRenderer))]
     public class RicochetAimLine : MonoBehaviour
     {
@@ -33,7 +30,6 @@ namespace DemoRicochet
 
         private void Awake()
         {
-            // Гарантируем, что на сцене только один предиктор (чтобы старый дубликат не рисовал поверх)
             RicochetAimLine[] allLines = FindObjectsByType<RicochetAimLine>();
             for (int i = 0; i < allLines.Length; i++)
             {

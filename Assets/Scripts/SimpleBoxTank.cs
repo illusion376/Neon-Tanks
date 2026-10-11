@@ -5,11 +5,7 @@ using UnityEngine.InputSystem;
 
 namespace DemoRicochet
 {
-    /// <summary>
-    /// Шаг 3 переноса визуала: Танк игрока на базе дизайнерской 3D-модели NT_Tank_Cyan.
-    /// Использует встроенные в FBX узлы __TurretPivot, __BarrelRecoil и __Muzzle,
-    /// а также неоновую подсветку днища, вращающееся кольцо и отдачу ствола при выстреле.
-    /// </summary>
+
     public class SimpleBoxTank : MonoBehaviour
     {
         public const float ProjectileHeight = 0.66f;
@@ -51,7 +47,6 @@ namespace DemoRicochet
             if (FindAnyObjectByType<SimpleBoxTank>() == null)
             {
                 GameObject tankObj = new GameObject("PlayerTank");
-                // Стартовая позиция в левой нижней части арены (свободная от укрытий)
                 tankObj.transform.position = new Vector3(-8.4f, 0f, -3.5f);
                 tankObj.AddComponent<SimpleBoxTank>();
             }
@@ -90,7 +85,6 @@ namespace DemoRicochet
 
             if (_turretPivot != null && _muzzlePoint != null)
             {
-                // Выравниваем базовый поворот FBX-модели так, чтобы ствол при 0° смотрел строго вдоль +Z
                 Vector3 nativeForward = _muzzlePoint.position - _turretPivot.position;
                 nativeForward.y = 0f;
                 if (nativeForward.sqrMagnitude < 0.0001f) nativeForward = Vector3.forward;
@@ -107,7 +101,6 @@ namespace DemoRicochet
                 _recoilBackLocalDir = _barrelRecoil.parent.InverseTransformDirection(-Vector3.forward);
             }
 
-            // Мягкая контактная тень, неоновый ореол и пунктирное кольцо команды под танком
             GameObject shadowObj = NeonVisuals.CreateContactShadow(transform, new Vector2(1.65f, 1.85f), 0.62f);
             if (shadowObj != null)
             {
@@ -120,7 +113,6 @@ namespace DemoRicochet
             {
                 Color teamTint = isCyanTeam ? new Color(0.015f, 0.78f, 1.0f) : new Color(1.0f, 0.025f, 0.56f);
 
-                // Неоновое свечение на полу под танком
                 Material glowMat = new Material(groundShader) { name = "TankUnderglow" };
                 glowMat.SetFloat("_Mode", 0f);
                 glowMat.SetVector("_Color", teamTint.linear * 1.8f);
@@ -129,7 +121,6 @@ namespace DemoRicochet
                 glowQuad.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
                 glowQuad.transform.localScale = new Vector3(2.8f, 2.8f, 1f);
 
-                // Вращающееся пунктирное кольцо вокруг танка
                 Material ringMat = new Material(groundShader) { name = "TankTeamRing" };
                 ringMat.SetFloat("_Mode", 1f);
                 ringMat.SetVector("_Color", teamTint.linear * 2.2f);
@@ -143,7 +134,6 @@ namespace DemoRicochet
 
         private void SetupPhysics()
         {
-            // Круглый в плане (или компактный квадратный) коллайдер, чтобы танк плавно огибал углы укрытий
             SphereCollider col = gameObject.AddComponent<SphereCollider>();
             col.center = new Vector3(0f, 0.45f, 0f);
             col.radius = 0.62f;
@@ -241,7 +231,6 @@ namespace DemoRicochet
         {
             if (_hullTransform == null) return;
 
-            // Корпус поворачивается по направлению движения
             if (_moveInput.sqrMagnitude > 0.01f)
             {
                 float targetMoveYaw = Mathf.Atan2(_moveInput.x, _moveInput.z) * Mathf.Rad2Deg;
@@ -255,14 +244,12 @@ namespace DemoRicochet
                 _shadowTransform.localRotation = Quaternion.Euler(0f, _hullYaw, 0f) * Quaternion.Euler(90f, 0f, 0f);
             }
 
-            // Башня вращается независимо от корпуса строго в сторону курсора
             if (_turretPivot != null)
             {
                 _turretPivot.localRotation = _turretBasis;
                 _turretPivot.rotation = Quaternion.AngleAxis(Mathf.DeltaAngle(_hullYaw, _aimYaw), Vector3.up) * _turretPivot.rotation;
             }
 
-            // Плавный возврат ствола после отдачи выстрела
             if (_barrelRecoil != null)
             {
                 if (_recoilTimer > 0f)
@@ -277,7 +264,6 @@ namespace DemoRicochet
                 }
             }
 
-            // Вращаем неоновое кольцо под танком
             if (_ringTransform != null)
             {
                 _ringTransform.localRotation = Quaternion.Euler(90f, Time.time * 18f, 0f);

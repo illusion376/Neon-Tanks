@@ -3,11 +3,6 @@ using UnityEngine;
 
 namespace DemoRicochet
 {
-    /// <summary>
-    /// Шаг 4 переноса визуала: Неоновый снаряд (NT_EnergyBolt_Cyan / Magenta)
-    /// с честной геометрией рикошета, подсветкой ближайших стен через шейдер NeonSurface
-    /// и вспышками искр в точках отскока.
-    /// </summary>
     public class RicochetBullet : MonoBehaviour
     {
         public const float ProjectileHeight = 0.66f;
@@ -26,7 +21,6 @@ namespace DemoRicochet
         private Collider _lastBouncedWall;
         private float _distSinceLastBounce;
 
-        // Список всех активных снарядов для передачи их света в шейдер стен (NeonSurface)
         private static readonly List<RicochetBullet> _activeBullets = new List<RicochetBullet>(16);
         private static readonly Vector4[] _shaderLightPos = new Vector4[8];
         private static readonly Vector4[] _shaderLightCol = new Vector4[8];
@@ -103,7 +97,6 @@ namespace DemoRicochet
 
             if (groundShader != null)
             {
-                // 1. Яркое белое ядро и неоновый ореол вокруг снаряда
                 Material haloMat = new Material(groundShader) { name = "BulletHalo" };
                 haloMat.SetFloat("_Mode", 0f);
                 haloMat.SetVector("_Color", teamColor.linear * 3.8f);
@@ -118,7 +111,6 @@ namespace DemoRicochet
                 coreQuad.transform.rotation = Quaternion.Euler(58f, 0f, 0f);
                 coreQuad.transform.localScale = new Vector3(0.20f, 0.20f, 1f);
 
-                // 2. Световой ореол на полу ровно под летящим снарядом
                 Material floorGlowMat = new Material(groundShader) { name = "BulletFloorGlow" };
                 floorGlowMat.SetFloat("_Mode", 0f);
                 floorGlowMat.SetVector("_Color", teamColor.linear * 2.2f);
@@ -127,7 +119,6 @@ namespace DemoRicochet
                 floorQuad.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
                 floorQuad.transform.localScale = new Vector3(2.4f, 2.4f, 1f);
 
-                // 3. Неоновый шлейф за снарядом
                 TrailRenderer trail = gameObject.AddComponent<TrailRenderer>();
                 trail.time = 0.18f;
                 trail.startWidth = 0.22f;
@@ -171,7 +162,6 @@ namespace DemoRicochet
             float remainingDistance = speed * Time.deltaTime;
             MoveWithRicochets(remainingDistance);
 
-            // Раз в кадр обновляем массив источников света снарядов для шейдера NeonSurface
             if (_lastLightFrame != Time.frameCount)
             {
                 _lastLightFrame = Time.frameCount;
@@ -220,7 +210,6 @@ namespace DemoRicochet
                     Vector3 hitCenter = transform.position + _direction * hit.distance;
                     hitCenter.y = ProjectileHeight;
 
-                    // Попадание в любой танк (игрока или бота)
                     TankHealth tankHealth = hit.collider.GetComponentInParent<TankHealth>();
                     if (tankHealth != null || hit.collider.GetComponentInParent<SimpleBoxTank>() != null)
                     {
@@ -234,14 +223,12 @@ namespace DemoRicochet
                         return;
                     }
 
-                    // Проверяем спец-объекты арены (разрушаемый блок, ускоряющее зеркало или ворота)
                     SpecialObstacle specialObs = hit.collider.GetComponentInParent<SpecialObstacle>();
                     if (specialObs != null)
                     {
                         specialObs.OnBulletBounce(this, hitCenter);
                     }
 
-                    // Превышен лимит рикошетов
                     if (_bounceCount >= maxBounces)
                     {
                         transform.position = hitCenter;
@@ -269,7 +256,6 @@ namespace DemoRicochet
                     _lastBouncedWall = hit.collider;
                     _distSinceLastBounce = 0f;
 
-                    // Вспышка искр в точке рикошета
                     SpawnFlashEffect(hitCenter, GetTeamColor(), 0.75f);
 
                     remainingDistance -= hit.distance;
@@ -335,9 +321,6 @@ namespace DemoRicochet
             return found;
         }
 
-        /// <summary>
-        /// Создаёт короткую неоновую вспышку искр при выстреле и рикошете.
-        /// </summary>
         private static void SpawnFlashEffect(Vector3 pos, Color color, float size)
         {
             Shader groundShader = NeonVisuals.GroundShader;

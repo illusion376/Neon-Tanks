@@ -4,17 +4,13 @@ namespace DemoRicochet
 {
     public enum PickupType
     {
-        Repair = 0,     // Аптечка: +1 HP (или +1 щит, если здоровье полное)
-        Shield = 1,     // Энергетический щит вокруг танка
-        Speed = 2,      // Ускорение движения на 6 сек
-        RapidFire = 3   // Тройной веерный залп и быстрая перезарядка на 6 сек
+        Repair = 0,     
+        Shield = 1,    
+        Speed = 2,      
+        RapidFire = 3   
     }
 
-    /// <summary>
-    /// Шаг 7: Универсальный скрипт для всех бонусов и хилок на полу арены.
-    /// Использует дизайнерские 3D-модели Pickups/NT_Pickup_* с неоновым свечением,
-    /// пульсирующим кольцом на полу, плавной левитацией и автоматическим респавном.
-    /// </summary>
+
     public class PickupItem : MonoBehaviour
     {
         [Header("Параметры бонуса")]
@@ -97,7 +93,6 @@ namespace DemoRicochet
             Shader groundShader = NeonVisuals.GroundShader;
             if (groundShader != null)
             {
-                // Пунктирное кольцо вокруг бонуса (как в ArenaView.Gameplay.cs)
                 _haloMat = new Material(groundShader) { name = "PickupHaloMat" };
                 _haloMat.SetFloat("_Mode", 1f);
                 _haloMat.SetVector(_colorId, accent.linear * 1.8f);
@@ -108,7 +103,6 @@ namespace DemoRicochet
                 _haloTransform.localRotation = Quaternion.Euler(90f, 0f, 0f);
                 _haloTransform.localScale = new Vector3(1.25f, 1.25f, 1f);
 
-                // Мягкое световое пятно на полу под бонусом
                 _glowMat = new Material(groundShader) { name = "PickupGlowMat" };
                 _glowMat.SetFloat("_Mode", 0f);
                 _glowMat.SetVector(_colorId, accent.linear * 1.15f);
@@ -135,7 +129,6 @@ namespace DemoRicochet
                 return;
             }
 
-            // Плавная левитация и вращение 3D-модели бонуса (параметры из ArenaView.Gameplay.cs)
             float t = Time.time;
             if (_modelTransform != null)
             {
@@ -273,10 +266,10 @@ namespace DemoRicochet
         {
             switch (type)
             {
-                case PickupType.Repair: return new Color(0.18f, 1.0f, 0.52f);     // Изумрудно-неоновый (хилка)
-                case PickupType.Shield: return new Color(0.015f, 0.78f, 1.0f);    // Голубой неон (щит)
-                case PickupType.Speed: return new Color(0.18f, 1.0f, 0.80f);      // Бирюзовая мята (скорость)
-                case PickupType.RapidFire: return new Color(1.0f, 0.76f, 0.12f);  // Золотой неон (тройной залп)
+                case PickupType.Repair: return new Color(0.18f, 1.0f, 0.52f);    
+                case PickupType.Shield: return new Color(0.015f, 0.78f, 1.0f);  
+                case PickupType.Speed: return new Color(0.18f, 1.0f, 0.80f);     
+                case PickupType.RapidFire: return new Color(1.0f, 0.76f, 0.12f);  
                 default: return Color.white;
             }
         }
