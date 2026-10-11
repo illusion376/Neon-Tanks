@@ -20,6 +20,8 @@ namespace DemoRicochet
         [Tooltip("Шанс (0..1), что бот вообще попытается стрелять рикошетом от стены")]
         [Range(0f, 1f)]
         public float ricochetAttemptChance = 0.50f;
+        [Tooltip("Умеет ли бот вообще стрелять рикошетом (выключено — только прямой наводкой)")]
+        public bool useRicochetShots = true;
 
         private Transform _hullTransform;
         private Transform _turretPivot;
@@ -57,7 +59,7 @@ namespace DemoRicochet
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoSpawnEnemies()
         {
-            if (FindAnyObjectByType<EnemyTankAI>() == null)
+            if (!LevelManager.IsActive && FindAnyObjectByType<EnemyTankAI>() == null)
             {
                 SpawnEnemy("EnemyTank_1", new Vector3(8.4f, 0f, 3.4f));
                 SpawnEnemy("EnemyTank_2", new Vector3(8.4f, 0f, -3.4f));
@@ -206,6 +208,13 @@ namespace DemoRicochet
 
         private void UpdateNavigation(float dt)
         {
+            // Неподвижная турель
+            if (moveSpeed <= 0f)
+            {
+                _moveDir = Vector3.zero;
+                return;
+            }
+
             _waypointTimer -= dt;
             _stuckTimer += dt;
 
@@ -302,6 +311,16 @@ namespace DemoRicochet
             return blocked;
         }
 
+        // Безопасная зона игрока (LevelDefinition) плюс запас, чтобы бот не подъезжал вплотную
+        private static bool IsNearSafeZone(Vector3 point)
+        {
+            LevelDefinition level = LevelDefinition.Active;
+            if (level == null || level.safeZoneRadius <= 0f) return false;
+            Vector3 d = point - level.PlayerSpawnPosition;
+            d.y = 0f;
+            return d.magnitude < level.safeZoneRadius + 1.5f;
+        }
+
         private void PickBestCorridorWaypoint()
         {
             float bestScore = -1f;
@@ -315,7 +334,8 @@ namespace DemoRicochet
 
                 float forwardBias = Vector3.Dot(dir, _moveDir) * 0.8f;
                 float score = clearDist + forwardBias + Random.Range(0f, 1.5f);
-                if (clearDist > 2.0f && score > bestScore)
+                Vector3 end = transform.position + dir * Mathf.Clamp(clearDist - 0.8f, 2.0f, 7.0f);
+                if (clearDist > 2.0f && score > bestScore && !IsNearSafeZone(end))
                 {
                     bestScore = score;
                     bestDir = dir;
@@ -354,6 +374,12 @@ namespace DemoRicochet
                     break;
                 }
 
+                // Не заезжаем в безопасную зону игрока
+                if (IsNearSafeZone(candidate))
+                {
+                    occupied = true;
+                }
+
                 if (!occupied && Vector3.Distance(candidate, transform.position) > 3.5f)
                 {
                     _targetWaypoint = candidate;
@@ -388,7 +414,7 @@ namespace DemoRicochet
                     }
                     else
                     {
-                        if (Random.value <= ricochetAttemptChance && TryFindRicochetShot(myOrigin, out Vector3 bounceDir))
+                        if (useRicochetShots && Random.value <= ricochetAttemptChance && TryFindRicochetShot(myOrigin, out Vector3 bounceDir))
                         {
                             _desiredAimDir = Quaternion.Euler(0f, _currentAimError * 1.15f, 0f) * bounceDir;
                             _hasValidShot = true;
@@ -404,6 +430,12 @@ namespace DemoRicochet
             float targetAimYaw = Mathf.Atan2(_desiredAimDir.x, _desiredAimDir.z) * Mathf.Rad2Deg;
             _aimYaw = Mathf.MoveTowardsAngle(_aimYaw, targetAimYaw, turretTurnSpeed * dt);
             _currentAimDir = Quaternion.Euler(0f, _aimYaw, 0f) * Vector3.forward;
+
+            // Игрок в стартовой безопасной зоне — не стреляем
+            if (_playerTank != null && LevelDefinition.IsInSafeZone(_playerTank.transform.position))
+            {
+                _hasValidShot = false;
+            }
 
             _fireTimer -= dt;
             if (_fireTimer <= 0f && _hasValidShot)

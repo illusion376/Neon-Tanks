@@ -161,6 +161,17 @@ namespace DemoRicochet
             }
 
             GameObject instance = UnityEngine.Object.Instantiate(sourcePrefab, wrapper.transform, false);
+            ApplyNeonMaterials(instance, isCyanTeam);
+            return wrapper;
+        }
+
+        /// <summary>
+        /// Заменяет материалы модели (из FBX) на неоновые из materials.json.
+        /// isCyanTeam перекрашивает командный цвет (NTM_Cyan / NTM_Magenta), null — оставить как в модели.
+        /// </summary>
+        public static void ApplyNeonMaterials(GameObject instance, bool? isCyanTeam = null)
+        {
+            EnsureInitialized();
             Renderer[] renderers = instance.GetComponentsInChildren<Renderer>(true);
 
             for (int r = 0; r < renderers.Length; r++)
@@ -187,8 +198,6 @@ namespace DemoRicochet
                 rend.shadowCastingMode = ShadowCastingMode.Off;
                 rend.receiveShadows = false;
             }
-
-            return wrapper;
         }
 
         public static GameObject CreateContactShadow(Transform parent, Vector2 size, float alpha = 0.62f)

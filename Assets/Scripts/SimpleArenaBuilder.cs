@@ -8,10 +8,15 @@ namespace DemoRicochet
 
     public class SimpleArenaBuilder : MonoBehaviour
     {
-        public const float MinX = -11.2f;
-        public const float MaxX = 11.2f;
-        public const float MinZ = -5.4f;
-        public const float MaxZ = 5.7f;
+        // Стандартная арена 22.4 × 11.1. В режиме уровней размер берётся из файла уровня (arenaWidth / arenaDepth).
+        private const float DefaultWidth = 22.4f;
+        private const float DefaultDepth = 11.1f;
+        private const float ArenaCenterZ = 0.15f;
+
+        public static float MinX { get; private set; } = -DefaultWidth * 0.5f;
+        public static float MaxX { get; private set; } = DefaultWidth * 0.5f;
+        public static float MinZ { get; private set; } = ArenaCenterZ - DefaultDepth * 0.5f;
+        public static float MaxZ { get; private set; } = ArenaCenterZ + DefaultDepth * 0.5f;
 
         [Header("Камера (как в референсе дизайнера)")]
         public float cameraPitch = 58f;
@@ -46,7 +51,7 @@ namespace DemoRicochet
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoCreateIfNeeded()
         {
-            if (FindAnyObjectByType<SimpleArenaBuilder>() == null)
+            if (!LevelManager.IsActive && FindAnyObjectByType<SimpleArenaBuilder>() == null)
             {
                 GameObject go = new GameObject("SimpleArenaBuilder");
                 go.AddComponent<SimpleArenaBuilder>();
@@ -55,6 +60,18 @@ namespace DemoRicochet
 
         private void Awake()
         {
+            float width = DefaultWidth;
+            float depth = DefaultDepth;
+            if (LevelManager.IsActive && LevelManager.Current.arenaWidth > 0f && LevelManager.Current.arenaDepth > 0f)
+            {
+                width = LevelManager.Current.arenaWidth;
+                depth = LevelManager.Current.arenaDepth;
+            }
+            MinX = -width * 0.5f;
+            MaxX = width * 0.5f;
+            MinZ = ArenaCenterZ - depth * 0.5f;
+            MaxZ = ArenaCenterZ + depth * 0.5f;
+
             NeonVisuals.EnsureInitialized();
             NeonVisuals.SetArenaBounds(MinX, MaxX, MinZ, MaxZ);
 
@@ -154,10 +171,16 @@ namespace DemoRicochet
             Shader ground = NeonVisuals.GroundShader;
             Vector4 boundsVec = new Vector4(MinX, MaxX, MinZ, MaxZ);
 
-            float width = cfg.maxX - cfg.minX;
-            float depth = cfg.maxZ - cfg.minZ;
-            float centerX = (cfg.minX + cfg.maxX) * 0.5f;
-            float centerZ = (cfg.minZ + cfg.maxZ) * 0.5f;
+            float width = MaxX - MinX;
+            float depth = MaxZ - MinZ;
+            float centerX = (MinX + MaxX) * 0.5f;
+            float centerZ = (MinZ + MaxZ) * 0.5f;
+
+            // Декоративные блоки и световые пятна из конфига рассчитаны на стандартную арену —
+            // для арены другого размера просто растягиваем их общий родительский объект
+            Transform surroundRoot = new GameObject("Surround").transform;
+            surroundRoot.SetParent(envRoot, false);
+            surroundRoot.localScale = new Vector3(width / (cfg.maxX - cfg.minX), 1f, depth / (cfg.maxZ - cfg.minZ));
 
             Material floorMat = CreateSurfaceMat(surface, "FloorGrid", ToColor(cfg.floorColor), Color.black, 0f, boundsVec);
             floorMat.SetFloat("_AmbientLift", 0.25f);
@@ -195,7 +218,7 @@ namespace DemoRicochet
                 {
                     BlockData b = cfg.blocks[i];
                     int cIdx = Mathf.Clamp(b.color, 0, paletteMats.Length - 1);
-                    SpawnVisualCube("SurroundCube", envRoot, ToVec3(b.position), ToVec3(b.size), paletteMats[cIdx]);
+                    SpawnVisualCube("SurroundCube", surroundRoot, ToVec3(b.position), ToVec3(b.size), paletteMats[cIdx]);
                 }
             }
 
@@ -205,12 +228,12 @@ namespace DemoRicochet
 
             Vector3 horizRim = new Vector3(width + cfg.rimWidth, cfg.rimWidth, cfg.rimWidth);
             Vector3 vertRim = new Vector3(cfg.rimWidth, cfg.rimWidth, depth + cfg.rimWidth);
-            SpawnVisualCube("RimFront", envRoot, new Vector3(centerX, cfg.rimHeight, cfg.minZ), horizRim, rimMat);
-            SpawnVisualCube("RimRear", envRoot, new Vector3(centerX, cfg.rimHeight, cfg.maxZ), horizRim, rimMat);
-            SpawnVisualCube("RimLeft", envRoot, new Vector3(cfg.minX, cfg.rimHeight, centerZ), vertRim, rimMat);
-            SpawnVisualCube("RimRight", envRoot, new Vector3(cfg.maxX, cfg.rimHeight, centerZ), vertRim, rimMat);
-            SpawnVisualCube("RimLeftAccent", envRoot, new Vector3(cfg.minX - 2.3f, cfg.rimHeight, centerZ), new Vector3(4.6f, 0.08f, 0.08f), rimMat);
-            SpawnVisualCube("RimRightAccent", envRoot, new Vector3(cfg.maxX + 2.3f, cfg.rimHeight, centerZ), new Vector3(4.6f, 0.08f, 0.08f), rimMat);
+            SpawnVisualCube("RimFront", envRoot, new Vector3(centerX, cfg.rimHeight, MinZ), horizRim, rimMat);
+            SpawnVisualCube("RimRear", envRoot, new Vector3(centerX, cfg.rimHeight, MaxZ), horizRim, rimMat);
+            SpawnVisualCube("RimLeft", envRoot, new Vector3(MinX, cfg.rimHeight, centerZ), vertRim, rimMat);
+            SpawnVisualCube("RimRight", envRoot, new Vector3(MaxX, cfg.rimHeight, centerZ), vertRim, rimMat);
+            SpawnVisualCube("RimLeftAccent", envRoot, new Vector3(MinX - 2.3f, cfg.rimHeight, centerZ), new Vector3(4.6f, 0.08f, 0.08f), rimMat);
+            SpawnVisualCube("RimRightAccent", envRoot, new Vector3(MaxX + 2.3f, cfg.rimHeight, centerZ), new Vector3(4.6f, 0.08f, 0.08f), rimMat);
 
             if (cfg.washes != null && ground != null)
             {
@@ -223,7 +246,7 @@ namespace DemoRicochet
                     washColor.a = 1f;
                     washMat.SetVector("_Color", washColor);
 
-                    GameObject quad = NeonVisuals.CreateEffectQuad("FloorWash", envRoot, washMat);
+                    GameObject quad = NeonVisuals.CreateEffectQuad("FloorWash", surroundRoot, washMat);
                     quad.transform.localPosition = ToVec3(w.position);
                     quad.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
                     quad.transform.localScale = new Vector3(w.size[0], w.size[1], 1f);
@@ -256,6 +279,9 @@ namespace DemoRicochet
 
         private void BuildInteriorObstacles()
         {
+            // В режиме уровней укрытия приходят из префаба уровня
+            if (LevelManager.IsActive) return;
+
             Transform obsRoot = new GameObject("Obstacles").transform;
             obsRoot.SetParent(transform, false);
 

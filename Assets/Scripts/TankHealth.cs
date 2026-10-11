@@ -10,6 +10,8 @@ namespace DemoRicochet
         public int currentHealth = 3;
         public float respawnDelay = 2.3f;
         public float spawnProtectionTime = 1.5f;
+        [Tooltip("Сколько раз танк ещё может возродиться (-1 = бесконечно, 0 = смерть окончательная)")]
+        public int respawnsLeft = -1;
 
         [Header("Щит и временные усиления (Бонусы)")]
         public int shieldCharges = 0;
@@ -27,6 +29,7 @@ namespace DemoRicochet
 
         public bool isCyanTeam = true;
         public bool IsDead => _isDead;
+        public bool IsOutOfLives => _isDead && respawnsLeft == 0;
         public float RespawnRemaining => _respawnTimer;
         public bool HasSpawnProtection => _protectionTimer > 0f;
         public float SpeedMultiplier => speedBoostTimer > 0f ? 1.45f : 1.0f;
@@ -167,9 +170,12 @@ namespace DemoRicochet
 
             if (_isDead)
             {
+                if (respawnsLeft == 0) return;
+
                 _respawnTimer -= dt;
                 if (_respawnTimer <= 0f)
                 {
+                    if (respawnsLeft > 0) respawnsLeft--;
                     Respawn();
                 }
                 return;
@@ -239,6 +245,13 @@ namespace DemoRicochet
 
             if (!isSelfHit && bulletIsCyan == isCyanTeam)
             {
+                return true;
+            }
+
+            // Игрок в стартовой безопасной зоне уровня — урон не проходит
+            if (isCyanTeam && LevelDefinition.IsInSafeZone(transform.position))
+            {
+                _hitFlashTimer = 0.14f;
                 return true;
             }
 

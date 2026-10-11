@@ -47,11 +47,20 @@ namespace DemoRicochet
         private Text _resultHeading;
         private Text _resultSubheading;
         private Image _resultAccentLine;
+        private Text _resultButtonText;
+        private GameObject _resultSecondaryButton;
+
+        // Режим кампании (LevelManager): победа — все враги уничтожены, поражение — кончились жизни
+        private bool _levelWon;
+        private int _enemiesLeft;
+        private GameObject _levelIntro;
+        private GameObject _safeZoneBanner;
+        private const float LevelIntroDuration = 5f;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoSpawnHUD()
         {
-            if (FindAnyObjectByType<GameHUD>() == null)
+            if (!LevelManager.IsActive && FindAnyObjectByType<GameHUD>() == null)
             {
                 GameObject go = new GameObject("GameHUD");
                 go.AddComponent<GameHUD>();
@@ -60,7 +69,8 @@ namespace DemoRicochet
 
         private void Awake()
         {
-            _remainingTime = matchDuration;
+            _remainingTime = LevelManager.IsActive ? 0f : matchDuration;
+            _enemiesLeft = LevelManager.IsActive ? LevelManager.CountAliveEnemies() : 0;
             _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             if (_font == null)
             {
@@ -88,6 +98,21 @@ namespace DemoRicochet
         private void HandleTankKilled(bool killedTankWasCyan)
         {
             if (_isMatchFinished) return;
+
+            if (LevelManager.IsActive)
+            {
+                _enemiesLeft = LevelManager.CountAliveEnemies();
+                RefreshScoreDisplay();
+                if (_playerHealth != null && _playerHealth.IsOutOfLives)
+                {
+                    FinishLevel(false);
+                }
+                else if (_enemiesLeft == 0)
+                {
+                    FinishLevel(true);
+                }
+                return;
+            }
 
             if (killedTankWasCyan)
             {
@@ -119,7 +144,20 @@ namespace DemoRicochet
 
             HandleHotkeys();
 
-            if (!_isMatchFinished && !_isPaused)
+            if (LevelManager.IsActive)
+            {
+                // В кампании таймер считает время прохождения уровня
+                if (!_isMatchFinished && !_isPaused)
+                {
+                    _remainingTime += Time.deltaTime;
+                }
+                if (_levelIntro != null && _levelIntro.activeSelf && _remainingTime > LevelIntroDuration)
+                {
+                    _levelIntro.SetActive(false);
+                }
+                RefreshScoreDisplay();
+            }
+            else if (!_isMatchFinished && !_isPaused)
             {
                 _remainingTime = Mathf.Max(0f, _remainingTime - Time.deltaTime);
                 if (_remainingTime <= 0f)
@@ -136,6 +174,7 @@ namespace DemoRicochet
         {
             bool escPressed = false;
             bool restartPressed = false;
+            bool nextPressed = false;
 
 #if ENABLE_INPUT_SYSTEM
             Keyboard kb = Keyboard.current;
@@ -143,11 +182,31 @@ namespace DemoRicochet
             {
                 if (kb.escapeKey.wasPressedThisFrame || kb.pKey.wasPressedThisFrame) escPressed = true;
                 if (kb.rKey.wasPressedThisFrame) restartPressed = true;
+                if (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame) nextPressed = true;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                // Отладка уровней: F1..F9 — сразу перейти на уровень N
+                Key[] levelKeys = { Key.F1, Key.F2, Key.F3, Key.F4, Key.F5, Key.F6, Key.F7, Key.F8, Key.F9 };
+                for (int i = 0; i < levelKeys.Length && i < LevelManager.LevelCount; i++)
+                {
+                    if (kb[levelKeys[i]].wasPressedThisFrame)
+                    {
+                        LevelManager.GoToLevel(i);
+                        return;
+                    }
+                }
+#endif
             }
 #else
             if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.P)) escPressed = true;
             if (Input.GetKeyDown(KeyCode.R)) restartPressed = true;
+            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) nextPressed = true;
 #endif
+
+            if (nextPressed && _isMatchFinished && _levelWon)
+            {
+                LevelManager.NextLevel();
+                return;
+            }
 
             if (restartPressed && (_isMatchFinished || _isPaused))
             {
@@ -196,12 +255,18 @@ namespace DemoRicochet
             }
             if (_resultSubheading != null)
             {
-                _resultSubheading.text = $"ИТОГОВЫЙ СЧЁТ   {_cyanScore:00}  :  {_magentaScore:00}\nНажмите «НОВЫЙ МАТЧ» или клавишу [R]";
+                _resultSubheading.text = $"ИТОГОВЫЙ СЧЁТ   {_cyanScore:00}  :  {_magentaScore:00}\nНажмите «НОВЫЙ МАТЧ»{(MobileControls.IsTouchMode ? "" : " или клавишу [R]")}";
             }
         }
 
         public void RestartMatch()
         {
+            if (LevelManager.IsActive)
+            {
+                LevelManager.RestartLevel();
+                return;
+            }
+
             _isMatchFinished = false;
             _isPaused = false;
             Time.timeScale = 1f;
@@ -231,6 +296,15 @@ namespace DemoRicochet
 
         private void RefreshScoreDisplay()
         {
+            if (LevelManager.IsActive)
+            {
+                int lives = _playerHealth == null ? 0
+                    : (_playerHealth.respawnsLeft < 0 ? 99 : _playerHealth.respawnsLeft + (_playerHealth.IsDead ? 0 : 1));
+                if (_cyanScoreText != null) _cyanScoreText.text = lives.ToString("00");
+                if (_magentaScoreText != null) _magentaScoreText.text = _enemiesLeft.ToString("00");
+                return;
+            }
+
             if (_cyanScoreText != null) _cyanScoreText.text = _cyanScore.ToString("00");
             if (_magentaScoreText != null) _magentaScoreText.text = _magentaScore.ToString("00");
         }
@@ -242,7 +316,64 @@ namespace DemoRicochet
             int mins = totalSecs / 60;
             int secs = totalSecs % 60;
             _timerText.text = $"{mins:00}:{secs:00}";
-            _timerText.color = totalSecs <= 15 ? Magenta : White;
+            _timerText.color = (!LevelManager.IsActive && totalSecs <= 15) ? Magenta : White;
+        }
+
+        private void FinishLevel(bool victory)
+        {
+            _isMatchFinished = true;
+            _isPaused = false;
+            _levelWon = victory;
+            if (_pauseOverlay != null) _pauseOverlay.SetActive(false);
+            if (_respawnBanner != null) _respawnBanner.SetActive(false);
+            if (_levelIntro != null) _levelIntro.SetActive(false);
+
+            Time.timeScale = 0f;
+
+            bool campaignDone = victory && LevelManager.IsLastLevel;
+            Color accent = victory ? Cyan : Magenta;
+
+            if (_resultOverlay != null) _resultOverlay.SetActive(true);
+            if (_resultHeading != null)
+            {
+                _resultHeading.text = campaignDone ? "КАМПАНИЯ ПРОЙДЕНА!" : (victory ? "УРОВЕНЬ ПРОЙДЕН!" : "ПОРАЖЕНИЕ");
+                _resultHeading.color = accent;
+            }
+            if (_resultAccentLine != null) _resultAccentLine.color = accent;
+
+            int secs = Mathf.CeilToInt(_remainingTime);
+            if (_resultSubheading != null)
+            {
+                _resultSubheading.text = victory
+                    ? $"Время: {secs / 60:00}:{secs % 60:00}"
+                    : $"Осталось врагов: {_enemiesLeft}";
+            }
+            if (_resultButtonText != null)
+            {
+                _resultButtonText.text = victory ? (campaignDone ? "С ПЕРВОГО УРОВНЯ" : "СЛЕДУЮЩИЙ УРОВЕНЬ") + KeyHint("Enter") : "ЗАНОВО" + KeyHint("R");
+            }
+            // При поражении основная кнопка уже «Заново», вторая не нужна
+            if (_resultSecondaryButton != null) _resultSecondaryButton.SetActive(victory);
+        }
+
+        /// <summary>
+        /// Подсказка клавиши для ПК (« [R]»). На телефоне — пустая строка.
+        /// </summary>
+        private static string KeyHint(string key)
+        {
+            return MobileControls.IsTouchMode ? "" : $" [{key}]";
+        }
+
+        private void OnResultPrimaryButton()
+        {
+            if (LevelManager.IsActive && _levelWon)
+            {
+                LevelManager.NextLevel();
+            }
+            else
+            {
+                RestartMatch();
+            }
         }
 
         private void RefreshPlayerStatusDisplay()
@@ -263,6 +394,12 @@ namespace DemoRicochet
             SetBuffChip(0, alive && _playerHealth.shieldCharges > 0, $"ЩИТ  ×{_playerHealth.shieldCharges}");
             SetBuffChip(1, alive && _playerHealth.speedBoostTimer > 0f, $"СКОРОСТЬ\n{Mathf.CeilToInt(_playerHealth.speedBoostTimer)} с");
             SetBuffChip(2, alive && _playerHealth.rapidFireTimer > 0f, $"ТРОЙНОЙ\n{Mathf.CeilToInt(_playerHealth.rapidFireTimer)} с");
+
+            bool inSafeZone = alive && !_isMatchFinished && _playerTank != null && LevelDefinition.IsInSafeZone(_playerTank.transform.position);
+            if (_safeZoneBanner != null && _safeZoneBanner.activeSelf != inSafeZone)
+            {
+                _safeZoneBanner.SetActive(inSafeZone);
+            }
 
             bool showRespawn = !alive && !_isMatchFinished;
             if (_respawnBanner != null && _respawnBanner.activeSelf != showRespawn)
@@ -321,9 +458,20 @@ namespace DemoRicochet
             _magentaScoreText = CreateLabel("00", scorePanel, 36, Magenta, new Vector2(76f, 46f), new Vector2(0.5f, 0.5f), new Vector2(88f, 5f), FontStyle.Bold);
             _timerText = CreateLabel("02:00", scorePanel, 24, White, new Vector2(88f, 36f), new Vector2(0.5f, 0.5f), new Vector2(0f, 5f), FontStyle.Bold);
 
-            CreateLabel("ВАША КОМАНДА", scorePanel, 9, Muted, new Vector2(96f, 18f), new Vector2(0.5f, 0.5f), new Vector2(-86f, -26f));
-            CreateLabel($"ДО {targetScore} ОЧКОВ", scorePanel, 9, Muted, new Vector2(80f, 18f), new Vector2(0.5f, 0.5f), new Vector2(0f, -26f));
-            CreateLabel("СОПЕРНИКИ", scorePanel, 9, Muted, new Vector2(88f, 18f), new Vector2(0.5f, 0.5f), new Vector2(86f, -26f));
+            bool campaign = LevelManager.IsActive;
+            CreateLabel(campaign ? "ЖИЗНИ" : "ВАША КОМАНДА", scorePanel, 9, Muted, new Vector2(96f, 18f), new Vector2(0.5f, 0.5f), new Vector2(-86f, -26f));
+            CreateLabel(campaign ? $"УРОВЕНЬ {LevelManager.CurrentIndex + 1}/{LevelManager.LevelCount}" : $"ДО {targetScore} ОЧКОВ", scorePanel, 9, Muted, new Vector2(80f, 18f), new Vector2(0.5f, 0.5f), new Vector2(0f, -26f));
+            CreateLabel(campaign ? "ВРАГИ" : "СОПЕРНИКИ", scorePanel, 9, Muted, new Vector2(88f, 18f), new Vector2(0.5f, 0.5f), new Vector2(86f, -26f));
+
+            // Название уровня и подсказка (скрываются через несколько секунд)
+            if (campaign)
+            {
+                Image introImg = CreateImage("LevelIntro", root, new Vector2(520f, 70f), new Vector2(0.5f, 1f), new Vector2(0f, -150f), PanelBg);
+                CreateImage("IntroAccent", introImg.transform, new Vector2(520f, 2f), new Vector2(0.5f, 1f), new Vector2(0f, -1f), Cyan);
+                CreateLabel(LevelManager.Current.title, introImg.transform, 20, Cyan, new Vector2(500f, 30f), new Vector2(0.5f, 0.5f), new Vector2(0f, 14f), FontStyle.Bold);
+                CreateLabel(LevelManager.Current.hint, introImg.transform, 13, White, new Vector2(500f, 26f), new Vector2(0.5f, 0.5f), new Vector2(0f, -14f));
+                _levelIntro = introImg.gameObject;
+            }
 
             Button pauseBtn = CreateButton("PauseButton", root, "", new Vector2(54f, 48f), new Vector2(1f, 1f), new Vector2(-50f, -40f), PanelBg, () => SetPaused(!_isPaused));
             CreateImage("BarL", pauseBtn.transform, new Vector2(4f, 17f), new Vector2(0.5f, 0.5f), new Vector2(-5f, 0f), White);
@@ -352,16 +500,26 @@ namespace DemoRicochet
             _respawnBanner = respawnImg.gameObject;
             _respawnBanner.SetActive(false);
 
-            _pauseOverlay = BuildModalOverlay(root, "PauseOverlay", "ПАУЗА", "Матч приостановлен  •  [Esc] продолжить", Cyan,
+            Image safeImg = CreateImage("SafeZoneBanner", root, new Vector2(420f, 40f), new Vector2(0.5f, 0f), new Vector2(0f, 160f), PanelBg);
+            CreateImage("SafeAccent", safeImg.transform, new Vector2(420f, 2f), new Vector2(0.5f, 1f), new Vector2(0f, -1f), Mint);
+            CreateLabel("БЕЗОПАСНАЯ ЗОНА  •  выезжай, чтобы стрелять", safeImg.transform, 14, Mint, new Vector2(400f, 34f), new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
+            _safeZoneBanner = safeImg.gameObject;
+            _safeZoneBanner.SetActive(false);
+
+            _pauseOverlay = BuildModalOverlay(root, "PauseOverlay", "ПАУЗА", MobileControls.IsTouchMode ? "Матч приостановлен" : "Матч приостановлен  •  [Esc] продолжить", Cyan,
                 "ПРОДОЛЖИТЬ", () => SetPaused(false),
-                "НАЧАТЬ ЗАНОВО [R]", RestartMatch,
+                "НАЧАТЬ ЗАНОВО" + KeyHint("R"), RestartMatch,
                 out _, out _, out _);
             _pauseOverlay.SetActive(false);
 
             _resultOverlay = BuildModalOverlay(root, "ResultOverlay", "ПОБЕДА!", "", Cyan,
-                "НОВЫЙ МАТЧ [R]", RestartMatch,
-                null, null,
+                "НОВЫЙ МАТЧ" + KeyHint("R"), OnResultPrimaryButton,
+                LevelManager.IsActive ? "ЗАНОВО" + KeyHint("R") : null, LevelManager.IsActive ? (UnityEngine.Events.UnityAction)RestartMatch : null,
                 out _resultHeading, out _resultSubheading, out _resultAccentLine);
+            Transform resultBtn = _resultOverlay.transform.Find("ModalCard/PrimaryBtn");
+            if (resultBtn != null) _resultButtonText = resultBtn.GetComponentInChildren<Text>();
+            Transform resultBtn2 = _resultOverlay.transform.Find("ModalCard/SecondaryBtn");
+            if (resultBtn2 != null) _resultSecondaryButton = resultBtn2.gameObject;
             _resultOverlay.SetActive(false);
         }
 

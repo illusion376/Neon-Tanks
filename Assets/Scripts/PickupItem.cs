@@ -18,6 +18,8 @@ namespace DemoRicochet
         public float respawnDelay = 8.0f;
         public float pickupRadius = 0.95f;
         public bool cycleTypeOnRespawn = false;
+        [Tooltip("Подбирает только игрок (враги проезжают мимо)")]
+        public bool playerOnly = false;
 
         private Transform _modelTransform;
         private Transform _haloTransform;
@@ -36,7 +38,7 @@ namespace DemoRicochet
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoSpawnArenaPickups()
         {
-            if (FindAnyObjectByType<PickupItem>() != null) return;
+            if (LevelManager.IsActive || FindAnyObjectByType<PickupItem>() != null) return;
 
             SpawnPickup("Pickup_Repair", PickupType.Repair, new Vector3(-4.2f, 0f, 2.1f));
             SpawnPickup("Pickup_Shield", PickupType.Shield, new Vector3(4.2f, 0f, -2.1f));
@@ -155,6 +157,7 @@ namespace DemoRicochet
             {
                 TankHealth tank = tanks[i];
                 if (tank == null || tank.IsDead) continue;
+                if (playerOnly && tank.GetComponent<SimpleBoxTank>() == null) continue;
 
                 float dx = tank.transform.position.x - myPos.x;
                 float dz = tank.transform.position.z - myPos.z;
@@ -192,6 +195,13 @@ namespace DemoRicochet
 
             Color burstColor = GetPickupColor(pickupType);
             TankHealth.SpawnRingBurst(transform.position, burstColor, 2.2f);
+
+            // respawnDelay <= 0 — одноразовый бонус
+            if (respawnDelay <= 0f)
+            {
+                Destroy(gameObject);
+                return;
+            }
 
             _isCollected = true;
             _respawnTimer = respawnDelay;

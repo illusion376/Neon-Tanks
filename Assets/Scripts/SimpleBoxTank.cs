@@ -34,6 +34,8 @@ namespace DemoRicochet
         private float _cooldownTimer;
         private Vector3 _aimDirection = Vector3.forward;
         private Vector3 _moveInput;
+        private float _prevAimMagnitude;
+        private bool _stickFireRequested;
         private Rigidbody _rb;
         private TankHealth _health;
 
@@ -44,7 +46,7 @@ namespace DemoRicochet
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoSpawnTank()
         {
-            if (FindAnyObjectByType<SimpleBoxTank>() == null)
+            if (!LevelManager.IsActive && FindAnyObjectByType<SimpleBoxTank>() == null)
             {
                 GameObject tankObj = new GameObject("PlayerTank");
                 tankObj.transform.position = new Vector3(-8.4f, 0f, -3.5f);
@@ -195,10 +197,42 @@ namespace DemoRicochet
             z = Input.GetAxisRaw("Vertical");
 #endif
             _moveInput = new Vector3(x, 0f, z).normalized;
+
+#if ENABLE_INPUT_SYSTEM
+            // Левый стик геймпада (на телефоне — экранный джойстик MobileControls).
+            // Камера смотрит без поворота, поэтому оси стика = мировые X/Z
+            Gamepad pad = Gamepad.current;
+            if (pad != null)
+            {
+                Vector2 stick = pad.leftStick.ReadValue();
+                if (stick.sqrMagnitude > 0.0025f)
+                {
+                    _moveInput = Vector3.ClampMagnitude(new Vector3(stick.x, 0f, stick.y), 1f);
+                }
+            }
+#endif
         }
 
         private void AimTurretAtMouse()
         {
+#if ENABLE_INPUT_SYSTEM
+            // Правый стик геймпада (на телефоне — экранный джойстик прицела)
+            Gamepad pad = Gamepad.current;
+            float aimMagnitude = 0f;
+            if (pad != null)
+            {
+                Vector2 stick = pad.rightStick.ReadValue();
+                aimMagnitude = stick.magnitude;
+                if (aimMagnitude > 0.2f) SetAimFromScreenDirection(stick);
+            }
+
+            // Выстрел, когда отпустили отведённый стик. Если сначала вернуть стик в центр — выстрела не будет
+            if (_prevAimMagnitude >= 0.5f && aimMagnitude < 0.1f) _stickFireRequested = true;
+            _prevAimMagnitude = aimMagnitude;
+
+            if (MobileControls.IsTouchMode || aimMagnitude > 0.2f) return;
+#endif
+
             Camera cam = Camera.main;
             if (cam == null) return;
 
@@ -270,11 +304,21 @@ namespace DemoRicochet
             }
         }
 
+        private void SetAimFromScreenDirection(Vector2 dir)
+        {
+            if (dir.sqrMagnitude < 0.0001f) return;
+            _aimDirection = new Vector3(dir.x, 0f, dir.y).normalized;
+            _aimYaw = Mathf.Atan2(_aimDirection.x, _aimDirection.z) * Mathf.Rad2Deg;
+        }
+
         private void HandleShooting()
         {
-            bool firePressed = false;
+            bool firePressed = _stickFireRequested;
+            _stickFireRequested = false;
 #if ENABLE_INPUT_SYSTEM
-            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+            if (Gamepad.current != null && Gamepad.current.rightTrigger.wasPressedThisFrame)
+                firePressed = true;
+            if (!MobileControls.IsTouchMode && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
                 firePressed = true;
             if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
                 firePressed = true;
@@ -283,6 +327,9 @@ namespace DemoRicochet
                 firePressed = true;
 #endif
             if (!firePressed || _cooldownTimer > 0f) return;
+
+            // Из стартовой безопасной зоны стрелять нельзя
+            if (LevelDefinition.IsInSafeZone(transform.position)) return;
 
             bool rapid = _health != null && _health.HasRapidFire;
             _cooldownTimer = rapid ? fireCooldown * 0.65f : fireCooldown;
