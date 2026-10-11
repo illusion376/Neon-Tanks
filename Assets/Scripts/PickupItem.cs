@@ -26,6 +26,7 @@ namespace DemoRicochet
         private Transform _glowTransform;
         private Material _haloMat;
         private Material _glowMat;
+        private Material _rapidIconMat;
         private MaterialPropertyBlock _emissionBlock;
 
         private bool _isCollected;
@@ -74,6 +75,8 @@ namespace DemoRicochet
         private void RebuildVisuals()
         {
             NeonVisuals.EnsureInitialized();
+            if (_haloMat != null) Destroy(_haloMat);
+            if (_glowMat != null) Destroy(_glowMat);
 
             for (int i = transform.childCount - 1; i >= 0; i--)
             {
@@ -83,7 +86,9 @@ namespace DemoRicochet
             Color accent = GetPickupColor(pickupType);
             string modelPath = GetModelPath(pickupType);
 
-            GameObject modelObj = NeonVisuals.InstantiateModel(modelPath, transform, "PickupMesh");
+            GameObject modelObj = pickupType == PickupType.RapidFire
+                ? BuildRapidFireModel()
+                : NeonVisuals.InstantiateModel(modelPath, transform, "PickupMesh");
             if (modelObj != null)
             {
                 _modelTransform = modelObj.transform;
@@ -115,6 +120,42 @@ namespace DemoRicochet
                 _glowTransform.localRotation = Quaternion.Euler(90f, 0f, 0f);
                 _glowTransform.localScale = new Vector3(2.2f, 2.2f, 1f);
             }
+        }
+
+        private GameObject BuildRapidFireModel()
+        {
+            Shader shader = Resources.Load<Shader>("Shaders/NeonPickup");
+            if (shader == null) return NeonVisuals.InstantiateModel("Pickups/NT_Pickup_RapidFire", transform, "PickupMesh");
+            if (_rapidIconMat == null)
+            {
+                _rapidIconMat = new Material(shader) { name = "RapidFirePickupIconMat" };
+                _rapidIconMat.SetFloat("_Mode", 2f);
+                Color color = GetPickupColor(PickupType.RapidFire).linear;
+                _rapidIconMat.SetVector(_colorId, new Vector4(color.r * 4f, color.g * 4f, color.b * 4f, 1f));
+            }
+
+            GameObject model = new GameObject("PickupMesh");
+            model.transform.SetParent(transform, false);
+            for (int i = 0; i < 2; i++)
+            {
+                GameObject disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                disc.name = i == 0 ? "GoldRim" : "DarkFace";
+                disc.transform.SetParent(model.transform, false);
+                disc.transform.localPosition = Vector3.up * (i == 0 ? 0.04f : 0.085f);
+                disc.transform.localScale = i == 0 ? new Vector3(1.04f, 0.04f, 1.04f) : new Vector3(0.92f, 0.013f, 0.92f);
+                Collider collider = disc.GetComponent<Collider>();
+                collider.enabled = false;
+                Destroy(collider);
+                Renderer renderer = disc.GetComponent<Renderer>();
+                renderer.sharedMaterial = NeonVisuals.GetMaterial(i == 0 ? "NTM_Yellow" : "NTM_Dark");
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+            }
+            GameObject icon = NeonVisuals.CreateEffectQuad("TripleShotIcon", model.transform, _rapidIconMat);
+            icon.transform.localPosition = Vector3.up * 0.104f;
+            icon.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            icon.transform.localScale = new Vector3(0.83f, 0.83f, 1f);
+            return model;
         }
 
         private void Update()
@@ -174,10 +215,7 @@ namespace DemoRicochet
             switch (pickupType)
             {
                 case PickupType.Repair:
-                    if (!tank.Heal(1))
-                    {
-                        tank.AddShield(1);
-                    }
+                    tank.Heal(1);
                     break;
 
                 case PickupType.Shield:
@@ -193,8 +231,7 @@ namespace DemoRicochet
                     break;
             }
 
-            Color burstColor = GetPickupColor(pickupType);
-            TankHealth.SpawnRingBurst(transform.position, burstColor, 2.2f);
+            tank.NotifyPickupCollected(pickupType);
             NeonAudio.Pickup(pickupType, tank.GetComponent<SimpleBoxTank>() != null, transform.position);
 
             // respawnDelay <= 0 — одноразовый бонус
@@ -296,6 +333,13 @@ namespace DemoRicochet
                 case PickupType.RapidFire: return new Color(1.0f, 0.76f, 0.12f);  
                 default: return Color.white;
             }
+        }
+
+        private void OnDestroy()
+        {
+            if (_haloMat != null) Destroy(_haloMat);
+            if (_glowMat != null) Destroy(_glowMat);
+            if (_rapidIconMat != null) Destroy(_rapidIconMat);
         }
     }
 }
