@@ -13,7 +13,7 @@ namespace DemoRicochet
 
         [Header("Настройки движения и стрельбы")]
         public bool isCyanTeam = true;
-        public float moveSpeed = 8.2f;
+        public float moveSpeed = 5.5f;
         public float bodyTurnSpeed = 540f;
         public float fireCooldown = 0.35f;
 
@@ -143,6 +143,16 @@ namespace DemoRicochet
             SphereCollider col = gameObject.AddComponent<SphereCollider>();
             col.center = new Vector3(0f, 0.45f, 0f);
             col.radius = 0.62f;
+
+            PhysicsMaterial slipMat = new PhysicsMaterial("TankSlippery")
+            {
+                dynamicFriction = 0f,
+                staticFriction = 0f,
+                frictionCombine = PhysicsMaterialCombine.Minimum,
+                bounciness = 0f,
+                bounceCombine = PhysicsMaterialCombine.Minimum
+            };
+            col.material = slipMat;
 
             _rb = gameObject.AddComponent<Rigidbody>();
             _rb.useGravity = false;
