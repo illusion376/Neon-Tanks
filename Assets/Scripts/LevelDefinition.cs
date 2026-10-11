@@ -36,9 +36,24 @@ namespace DemoRicochet
 
         public Vector3 PlayerSpawnPosition => playerSpawn != null ? playerSpawn.position : transform.position;
 
+        private bool _safeZoneActive = true;
+        private GameObject _safeZoneVisual;
+
+        public bool IsSafeZoneActive => _safeZoneActive;
+
+        /// <summary>
+        /// Включает/выключает безопасную зону. Выключается первым выстрелом игрока, включается при его возрождении.
+        /// </summary>
+        public void SetSafeZoneActive(bool active)
+        {
+            if (_safeZoneActive == active) return;
+            _safeZoneActive = active;
+            if (_safeZoneVisual != null) _safeZoneVisual.SetActive(active);
+        }
+
         public static bool IsInSafeZone(Vector3 position)
         {
-            if (Active == null || Active.safeZoneRadius <= 0f) return false;
+            if (Active == null || !Active._safeZoneActive || Active.safeZoneRadius <= 0f) return false;
             Vector3 d = position - Active.PlayerSpawnPosition;
             d.y = 0f;
             return d.sqrMagnitude <= Active.safeZoneRadius * Active.safeZoneRadius;
@@ -68,6 +83,8 @@ namespace DemoRicochet
             Transform zone = new GameObject("SafeZone").transform;
             zone.SetParent(transform, false);
             zone.position = new Vector3(PlayerSpawnPosition.x, 0f, PlayerSpawnPosition.z);
+            _safeZoneVisual = zone.gameObject;
+            _safeZoneVisual.SetActive(_safeZoneActive);
 
             Material fillMat = new Material(ground) { name = "SafeZoneFill" };
             fillMat.SetFloat("_Mode", 0f);

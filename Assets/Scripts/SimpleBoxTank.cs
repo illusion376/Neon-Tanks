@@ -338,23 +338,24 @@ namespace DemoRicochet
 
         private void HandleShooting()
         {
+            // Удержание ЛКМ / пробела / курка — автоогонь с обычной перезарядкой
             bool firePressed = _stickFireRequested;
             _stickFireRequested = false;
 #if ENABLE_INPUT_SYSTEM
-            if (Gamepad.current != null && Gamepad.current.rightTrigger.wasPressedThisFrame)
+            if (Gamepad.current != null && Gamepad.current.rightTrigger.isPressed)
                 firePressed = true;
-            if (!MobileControls.IsTouchMode && !IsPointerOverUI() && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+            if (!MobileControls.IsTouchMode && !IsPointerOverUI() && Mouse.current != null && Mouse.current.leftButton.isPressed)
                 firePressed = true;
-            if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
+            if (Keyboard.current != null && Keyboard.current.spaceKey.isPressed)
                 firePressed = true;
 #else
-            if ((!IsPointerOverUI() && Input.GetMouseButtonDown(0)) || Input.GetKeyDown(KeyCode.Space))
+            if ((!IsPointerOverUI() && Input.GetMouseButton(0)) || Input.GetKey(KeyCode.Space))
                 firePressed = true;
 #endif
             if (!firePressed || _cooldownTimer > 0f) return;
 
-            // Из стартовой безопасной зоны стрелять нельзя
-            if (LevelDefinition.IsInSafeZone(transform.position)) return;
+            // Первый выстрел выключает стартовую безопасную зону
+            if (LevelDefinition.Active != null) LevelDefinition.Active.SetSafeZoneActive(false);
 
             bool rapid = _health != null && _health.HasRapidFire;
             _cooldownTimer = rapid ? fireCooldown * 0.65f : fireCooldown;

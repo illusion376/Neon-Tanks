@@ -467,7 +467,7 @@ namespace DemoRicochet
 
             Image safeImg = CreateImage("SafeZoneBanner", root, new Vector2(420f, 40f), new Vector2(0.5f, 0f), new Vector2(0f, 58f), PanelBg);
             CreateImage("SafeAccent", safeImg.transform, new Vector2(420f, 2f), new Vector2(0.5f, 1f), new Vector2(0f, -1f), Mint);
-            CreateLabel("БЕЗОПАСНАЯ ЗОНА  •  выезжай, чтобы стрелять", safeImg.transform, 14, Mint, new Vector2(400f, 34f), new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
+            CreateLabel("БЕЗОПАСНАЯ ЗОНА  •  первый выстрел отключит защиту", safeImg.transform, 14, Mint, new Vector2(400f, 34f), new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
             _safeZoneBanner = safeImg.gameObject;
             _safeZoneBanner.SetActive(false);
 

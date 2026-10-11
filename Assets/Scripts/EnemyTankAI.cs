@@ -150,7 +150,9 @@ namespace DemoRicochet
         private void SetupPhysics()
         {
             SphereCollider col = gameObject.AddComponent<SphereCollider>();
-            col.center = new Vector3(0f, 0.45f, 0f);
+            // Сфера чуть выше пола: при center.y = 0.45 она уходила под пол, и трение
+            // почти останавливало бота на небольших скоростях
+            col.center = new Vector3(0f, 0.65f, 0f);
             col.radius = 0.62f;
             _myCollider = col;
 
@@ -305,7 +307,7 @@ namespace DemoRicochet
         private static bool IsNearSafeZone(Vector3 point)
         {
             LevelDefinition level = LevelDefinition.Active;
-            if (level == null || level.safeZoneRadius <= 0f) return false;
+            if (level == null || !level.IsSafeZoneActive || level.safeZoneRadius <= 0f) return false;
             Vector3 d = point - level.PlayerSpawnPosition;
             d.y = 0f;
             return d.magnitude < level.safeZoneRadius + 1.5f;

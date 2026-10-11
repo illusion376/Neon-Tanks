@@ -331,6 +331,9 @@ namespace DemoRicochet
 
         private void Respawn()
         {
+            // Игрок возрождается на старте — безопасная зона снова включается
+            if (isCyanTeam && LevelDefinition.Active != null) LevelDefinition.Active.SetSafeZoneActive(true);
+
             _isDead = false;
             currentHealth = maxHealth;
             _protectionTimer = spawnProtectionTime;
