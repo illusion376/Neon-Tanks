@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -32,6 +33,7 @@ namespace DemoRicochet
         private float _aimYaw;
         private float _recoilTimer;
         private float _cooldownTimer;
+        private float _cooldownDuration;
         private Vector3 _aimDirection = Vector3.forward;
         private Vector3 _moveInput;
         private float _prevAimMagnitude;
@@ -42,6 +44,8 @@ namespace DemoRicochet
         public Transform MuzzlePoint => _muzzlePoint;
         public Vector3 AimDirection => _aimDirection;
         public TankHealth Health => _health;
+        public float FireCooldownProgress => _cooldownDuration > 0f
+            ? Mathf.Clamp01(1f - _cooldownTimer / _cooldownDuration) : 1f;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoSpawnTank()
@@ -153,9 +157,9 @@ namespace DemoRicochet
 
         private void Update()
         {
-            if (_health != null && _health.IsDead)
+            if (Time.timeScale <= 0f || (_health != null && _health.IsDead))
             {
-                _moveInput = Vector3.zero;
+                ResetInput();
                 return;
             }
 
@@ -165,6 +169,29 @@ namespace DemoRicochet
             AimTurretAtMouse();
             UpdateVisualRig(Time.deltaTime);
             HandleShooting();
+        }
+
+        private void ResetInput()
+        {
+            _moveInput = Vector3.zero;
+            _prevAimMagnitude = 0f;
+            _stickFireRequested = false;
+            if (_rb != null) _rb.linearVelocity = Vector3.zero;
+        }
+
+        private void OnApplicationFocus(bool hasFocus)
+        {
+            if (!hasFocus) ResetInput();
+        }
+
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused) ResetInput();
+        }
+
+        private static bool IsPointerOverUI()
+        {
+            return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
         }
 
         private void FixedUpdate()
@@ -230,8 +257,10 @@ namespace DemoRicochet
             if (_prevAimMagnitude >= 0.5f && aimMagnitude < 0.1f) _stickFireRequested = true;
             _prevAimMagnitude = aimMagnitude;
 
-            if (MobileControls.IsTouchMode || aimMagnitude > 0.2f) return;
+            if (MobileControls.IsTouchMode || aimMagnitude > 0.2f || _stickFireRequested) return;
 #endif
+
+            if (IsPointerOverUI()) return;
 
             Camera cam = Camera.main;
             if (cam == null) return;
@@ -318,12 +347,12 @@ namespace DemoRicochet
 #if ENABLE_INPUT_SYSTEM
             if (Gamepad.current != null && Gamepad.current.rightTrigger.wasPressedThisFrame)
                 firePressed = true;
-            if (!MobileControls.IsTouchMode && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+            if (!MobileControls.IsTouchMode && !IsPointerOverUI() && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
                 firePressed = true;
             if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
                 firePressed = true;
 #else
-            if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Space))
+            if ((!IsPointerOverUI() && Input.GetMouseButtonDown(0)) || Input.GetKeyDown(KeyCode.Space))
                 firePressed = true;
 #endif
             if (!firePressed || _cooldownTimer > 0f) return;
@@ -333,6 +362,7 @@ namespace DemoRicochet
 
             bool rapid = _health != null && _health.HasRapidFire;
             _cooldownTimer = rapid ? fireCooldown * 0.65f : fireCooldown;
+            _cooldownDuration = _cooldownTimer;
             _recoilTimer = 0.14f;
             if (_health != null) _health.NotifyFiredShot();
 

@@ -14,7 +14,6 @@ namespace DemoRicochet
         private static readonly Color Cyan = new Color(0.12f, 0.92f, 1.0f);
         private static readonly Color Magenta = new Color(1.0f, 0.18f, 0.62f);
         private static readonly Color Mint = new Color(0.18f, 1.0f, 0.80f);
-        private static readonly Color Gold = new Color(1.0f, 0.76f, 0.12f);
         private static readonly Color White = new Color(0.90f, 0.95f, 1.0f);
         private static readonly Color Muted = new Color(0.49f, 0.61f, 0.71f);
         private static readonly Color PanelBg = new Color(0.020f, 0.036f, 0.055f, 0.86f);
@@ -33,13 +32,12 @@ namespace DemoRicochet
         private Font _font;
         private SimpleBoxTank _playerTank;
         private TankHealth _playerHealth;
+        private MobileControls _mobileControls;
 
         private Text _cyanScoreText;
         private Text _magentaScoreText;
         private Text _timerText;
-        private readonly Image[] _armorPips = new Image[3];
-        private readonly GameObject[] _buffChips = new GameObject[3];
-        private readonly Text[] _buffTexts = new Text[3];
+        private GameObject _gameplayHud;
         private GameObject _respawnBanner;
         private Text _respawnText;
         private GameObject _pauseOverlay;
@@ -79,6 +77,10 @@ namespace DemoRicochet
 
             EnsureEventSystem();
             BuildInterface();
+            if (MobileControls.IsTouchMode || Application.isEditor)
+            {
+                _mobileControls = gameObject.AddComponent<MobileControls>();
+            }
         }
 
         private void OnEnable()
@@ -143,6 +145,10 @@ namespace DemoRicochet
             }
 
             HandleHotkeys();
+            if (_mobileControls != null)
+            {
+                _mobileControls.SetInputEnabled(!_isPaused && !_isMatchFinished && (_playerHealth == null || !_playerHealth.IsDead));
+            }
 
             if (LevelManager.IsActive)
             {
@@ -168,6 +174,15 @@ namespace DemoRicochet
 
             RefreshTimerDisplay();
             RefreshPlayerStatusDisplay();
+        }
+
+        private void LateUpdate()
+        {
+            // Читаем таймер после Update танка: заполнение сбрасывается в кадре выстрела.
+            if (_mobileControls != null && _playerTank != null)
+            {
+                _mobileControls.SetFireCooldown(_playerTank.FireCooldownProgress);
+            }
         }
 
         private void HandleHotkeys()
@@ -225,6 +240,8 @@ namespace DemoRicochet
             if (_isMatchFinished) paused = false;
             _isPaused = paused;
             Time.timeScale = _isPaused ? 0f : 1f;
+            if (_gameplayHud != null) _gameplayHud.SetActive(!_isPaused);
+            if (_mobileControls != null) _mobileControls.SetInputEnabled(!_isPaused && !_isMatchFinished);
             if (_pauseOverlay != null)
             {
                 _pauseOverlay.SetActive(_isPaused);
@@ -239,6 +256,7 @@ namespace DemoRicochet
             if (_respawnBanner != null) _respawnBanner.SetActive(false);
 
             Time.timeScale = 0f;
+            if (_mobileControls != null) _mobileControls.SetInputEnabled(false);
 
             bool victory = _cyanScore > _magentaScore;
             bool draw = _cyanScore == _magentaScore;
@@ -270,6 +288,7 @@ namespace DemoRicochet
             _isMatchFinished = false;
             _isPaused = false;
             Time.timeScale = 1f;
+            if (_gameplayHud != null) _gameplayHud.SetActive(true);
 
             _cyanScore = 0;
             _magentaScore = 0;
@@ -329,6 +348,7 @@ namespace DemoRicochet
             if (_levelIntro != null) _levelIntro.SetActive(false);
 
             Time.timeScale = 0f;
+            if (_mobileControls != null) _mobileControls.SetInputEnabled(false);
 
             bool campaignDone = victory && LevelManager.IsLastLevel;
             Color accent = victory ? Cyan : Magenta;
@@ -381,20 +401,6 @@ namespace DemoRicochet
             if (_playerHealth == null) return;
 
             bool alive = !_playerHealth.IsDead;
-            int hp = alive ? Mathf.Clamp(_playerHealth.currentHealth, 0, 3) : 0;
-
-            for (int i = 0; i < _armorPips.Length; i++)
-            {
-                if (_armorPips[i] != null)
-                {
-                    _armorPips[i].color = i < hp ? Cyan : new Color(0.15f, 0.22f, 0.26f, 0.85f);
-                }
-            }
-
-            SetBuffChip(0, alive && _playerHealth.shieldCharges > 0, $"ЩИТ  ×{_playerHealth.shieldCharges}");
-            SetBuffChip(1, alive && _playerHealth.speedBoostTimer > 0f, $"СКОРОСТЬ\n{Mathf.CeilToInt(_playerHealth.speedBoostTimer)} с");
-            SetBuffChip(2, alive && _playerHealth.rapidFireTimer > 0f, $"ТРОЙНОЙ\n{Mathf.CeilToInt(_playerHealth.rapidFireTimer)} с");
-
             bool inSafeZone = alive && !_isMatchFinished && _playerTank != null && LevelDefinition.IsInSafeZone(_playerTank.transform.position);
             if (_safeZoneBanner != null && _safeZoneBanner.activeSelf != inSafeZone)
             {
@@ -413,19 +419,6 @@ namespace DemoRicochet
             }
         }
 
-        private void SetBuffChip(int index, bool active, string labelText)
-        {
-            if (index < 0 || index >= _buffChips.Length || _buffChips[index] == null) return;
-            if (_buffChips[index].activeSelf != active)
-            {
-                _buffChips[index].SetActive(active);
-            }
-            if (active && _buffTexts[index] != null)
-            {
-                _buffTexts[index].text = labelText;
-            }
-        }
-
         private void BuildInterface()
         {
             GameObject canvasObj = new GameObject("NeonHUD_Canvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -441,58 +434,30 @@ namespace DemoRicochet
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 0.5f;
 
-            RectTransform root = canvasObj.GetComponent<RectTransform>();
+            RectTransform canvasRoot = canvasObj.GetComponent<RectTransform>();
+            RectTransform root = CreateRect("SafeArea", canvasRoot, Vector2.zero, Vector2.zero, Vector2.zero);
+            root.gameObject.AddComponent<UISafeArea>();
+            _gameplayHud = root.gameObject;
 
-            RectTransform brand = CreateRect("BrandBadge", root, new Vector2(220f, 54f), new Vector2(0f, 1f), new Vector2(138f, -44f));
-            CreateImage("BrandAccent", brand, new Vector2(3f, 34f), new Vector2(0f, 0.5f), Vector2.zero, Cyan);
-            Text brandTitle = CreateLabel("NEON  /  RICOCHET", brand, 19, White, new Vector2(200f, 26f), new Vector2(0.5f, 0.5f), new Vector2(12f, 9f), FontStyle.Bold);
-            brandTitle.alignment = TextAnchor.MiddleLeft;
-            Text brandSub = CreateLabel("T A N K   A R E N A", brand, 10, Muted, new Vector2(200f, 18f), new Vector2(0.5f, 0.5f), new Vector2(12f, -13f));
-            brandSub.alignment = TextAnchor.MiddleLeft;
-
-            RectTransform scorePanel = CreateImage("ScorePanel", root, new Vector2(268f, 92f), new Vector2(0.5f, 1f), new Vector2(0f, -53f), PanelBg).rectTransform;
-            CreateImage("CyanTopLine", scorePanel, new Vector2(132f, 2.5f), new Vector2(0f, 1f), new Vector2(66f, -1f), Cyan);
-            CreateImage("MagentaTopLine", scorePanel, new Vector2(132f, 2.5f), new Vector2(1f, 1f), new Vector2(-66f, -1f), Magenta);
-
-            _cyanScoreText = CreateLabel("00", scorePanel, 36, Cyan, new Vector2(76f, 46f), new Vector2(0.5f, 0.5f), new Vector2(-88f, 5f), FontStyle.Bold);
-            _magentaScoreText = CreateLabel("00", scorePanel, 36, Magenta, new Vector2(76f, 46f), new Vector2(0.5f, 0.5f), new Vector2(88f, 5f), FontStyle.Bold);
-            _timerText = CreateLabel("02:00", scorePanel, 24, White, new Vector2(88f, 36f), new Vector2(0.5f, 0.5f), new Vector2(0f, 5f), FontStyle.Bold);
+            Image scoreFrame = CreateImage("ScorePanel", root, new Vector2(390f, 84f), new Vector2(0.5f, 1f), new Vector2(0f, -47f), Color.white);
+            scoreFrame.sprite = Resources.Load<Sprite>("NeonTanks/UI/ScoreFrame");
+            RectTransform scorePanel = scoreFrame.rectTransform;
+            _cyanScoreText = CreateLabel("00", scorePanel, 43, Cyan, new Vector2(84f, 54f), new Vector2(0.5f, 0.5f), new Vector2(-117f, -1f), FontStyle.Bold);
+            _magentaScoreText = CreateLabel("00", scorePanel, 43, Magenta, new Vector2(84f, 54f), new Vector2(0.5f, 0.5f), new Vector2(117f, -1f), FontStyle.Bold);
+            CreateLabel("TIME", scorePanel, 13, Muted, new Vector2(96f, 20f), new Vector2(0.5f, 0.5f), new Vector2(0f, 17f), FontStyle.Bold);
+            _timerText = CreateLabel("00:00", scorePanel, 28, White, new Vector2(106f, 38f), new Vector2(0.5f, 0.5f), new Vector2(0f, -8f), FontStyle.Bold);
+            RefreshScoreDisplay();
+            RefreshTimerDisplay();
 
             bool campaign = LevelManager.IsActive;
-            CreateLabel(campaign ? "ЖИЗНИ" : "ВАША КОМАНДА", scorePanel, 9, Muted, new Vector2(96f, 18f), new Vector2(0.5f, 0.5f), new Vector2(-86f, -26f));
-            CreateLabel(campaign ? $"УРОВЕНЬ {LevelManager.CurrentIndex + 1}/{LevelManager.LevelCount}" : $"ДО {targetScore} ОЧКОВ", scorePanel, 9, Muted, new Vector2(80f, 18f), new Vector2(0.5f, 0.5f), new Vector2(0f, -26f));
-            CreateLabel(campaign ? "ВРАГИ" : "СОПЕРНИКИ", scorePanel, 9, Muted, new Vector2(88f, 18f), new Vector2(0.5f, 0.5f), new Vector2(86f, -26f));
-
             // Название уровня и подсказка (скрываются через несколько секунд)
             if (campaign)
             {
-                Image introImg = CreateImage("LevelIntro", root, new Vector2(520f, 70f), new Vector2(0.5f, 1f), new Vector2(0f, -150f), PanelBg);
-                CreateImage("IntroAccent", introImg.transform, new Vector2(520f, 2f), new Vector2(0.5f, 1f), new Vector2(0f, -1f), Cyan);
-                CreateLabel(LevelManager.Current.title, introImg.transform, 20, Cyan, new Vector2(500f, 30f), new Vector2(0.5f, 0.5f), new Vector2(0f, 14f), FontStyle.Bold);
-                CreateLabel(LevelManager.Current.hint, introImg.transform, 13, White, new Vector2(500f, 26f), new Vector2(0.5f, 0.5f), new Vector2(0f, -14f));
-                _levelIntro = introImg.gameObject;
+                _levelIntro = BuildLevelIntro(root);
             }
 
-            Button pauseBtn = CreateButton("PauseButton", root, "", new Vector2(54f, 48f), new Vector2(1f, 1f), new Vector2(-50f, -40f), PanelBg, () => SetPaused(!_isPaused));
-            CreateImage("BarL", pauseBtn.transform, new Vector2(4f, 17f), new Vector2(0.5f, 0.5f), new Vector2(-5f, 0f), White);
-            CreateImage("BarR", pauseBtn.transform, new Vector2(4f, 17f), new Vector2(0.5f, 0.5f), new Vector2(5f, 0f), White);
-
-            RectTransform armorPanel = CreateImage("ArmorPanel", root, new Vector2(184f, 52f), new Vector2(0.5f, 0f), new Vector2(0f, 38f), PanelBg).rectTransform;
-            CreateLabel("Б Р О Н Я", armorPanel, 10, Muted, new Vector2(140f, 18f), new Vector2(0.5f, 0.5f), new Vector2(0f, 10f), FontStyle.Bold);
-            for (int i = 0; i < 3; i++)
-            {
-                _armorPips[i] = CreateImage("ArmorPip_" + i, armorPanel, new Vector2(44f, 6.5f), new Vector2(0.5f, 0.5f), new Vector2((i - 1) * 50f, -9f), Cyan);
-            }
-
-            Color[] chipColors = { Cyan, Mint, Gold };
-            for (int i = 0; i < 3; i++)
-            {
-                Image chip = CreateImage("BuffChip_" + i, root, new Vector2(112f, 44f), new Vector2(0.5f, 0f), new Vector2((i - 1) * 122f, 98f), PanelBg);
-                CreateImage("ChipAccent", chip.transform, new Vector2(3f, 30f), new Vector2(0f, 0.5f), new Vector2(1.5f, 0f), chipColors[i]);
-                _buffTexts[i] = CreateLabel("", chip.transform, 12, chipColors[i], new Vector2(104f, 38f), new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
-                _buffChips[i] = chip.gameObject;
-                _buffChips[i].SetActive(false);
-            }
+            Button pauseBtn = CreateButton("PauseButton", root, "", new Vector2(58f, 58f), new Vector2(1f, 1f), new Vector2(-51f, -47f), Color.white, () => SetPaused(!_isPaused));
+            pauseBtn.image.sprite = Resources.Load<Sprite>("NeonTanks/UI/PauseButton");
 
             Image respawnImg = CreateImage("RespawnBanner", root, new Vector2(360f, 48f), new Vector2(0.5f, 0.5f), new Vector2(0f, -84f), PanelBg);
             CreateImage("RespawnAccent", respawnImg.transform, new Vector2(360f, 2f), new Vector2(0.5f, 1f), new Vector2(0f, -1f), Cyan);
@@ -500,19 +465,16 @@ namespace DemoRicochet
             _respawnBanner = respawnImg.gameObject;
             _respawnBanner.SetActive(false);
 
-            Image safeImg = CreateImage("SafeZoneBanner", root, new Vector2(420f, 40f), new Vector2(0.5f, 0f), new Vector2(0f, 160f), PanelBg);
+            Image safeImg = CreateImage("SafeZoneBanner", root, new Vector2(420f, 40f), new Vector2(0.5f, 0f), new Vector2(0f, 58f), PanelBg);
             CreateImage("SafeAccent", safeImg.transform, new Vector2(420f, 2f), new Vector2(0.5f, 1f), new Vector2(0f, -1f), Mint);
             CreateLabel("БЕЗОПАСНАЯ ЗОНА  •  выезжай, чтобы стрелять", safeImg.transform, 14, Mint, new Vector2(400f, 34f), new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
             _safeZoneBanner = safeImg.gameObject;
             _safeZoneBanner.SetActive(false);
 
-            _pauseOverlay = BuildModalOverlay(root, "PauseOverlay", "ПАУЗА", MobileControls.IsTouchMode ? "Матч приостановлен" : "Матч приостановлен  •  [Esc] продолжить", Cyan,
-                "ПРОДОЛЖИТЬ", () => SetPaused(false),
-                "НАЧАТЬ ЗАНОВО" + KeyHint("R"), RestartMatch,
-                out _, out _, out _);
+            _pauseOverlay = BuildPauseOverlay(canvasRoot);
             _pauseOverlay.SetActive(false);
 
-            _resultOverlay = BuildModalOverlay(root, "ResultOverlay", "ПОБЕДА!", "", Cyan,
+            _resultOverlay = BuildModalOverlay(canvasRoot, "ResultOverlay", "ПОБЕДА!", "", Cyan,
                 "НОВЫЙ МАТЧ" + KeyHint("R"), OnResultPrimaryButton,
                 LevelManager.IsActive ? "ЗАНОВО" + KeyHint("R") : null, LevelManager.IsActive ? (UnityEngine.Events.UnityAction)RestartMatch : null,
                 out _resultHeading, out _resultSubheading, out _resultAccentLine);
@@ -521,6 +483,86 @@ namespace DemoRicochet
             Transform resultBtn2 = _resultOverlay.transform.Find("ModalCard/SecondaryBtn");
             if (resultBtn2 != null) _resultSecondaryButton = resultBtn2.gameObject;
             _resultOverlay.SetActive(false);
+        }
+
+        private GameObject BuildLevelIntro(Transform parent)
+        {
+            Image panel = CreateImage("LevelIntro", parent, new Vector2(680f, 104f), new Vector2(0.5f, 1f), new Vector2(0f, -142f), Color.white);
+            panel.sprite = Resources.Load<Sprite>("NeonTanks/UI/LevelIntroPanel");
+            panel.type = Image.Type.Sliced;
+
+            Image badge = CreateImage("LevelNumber", panel.transform, new Vector2(74f, 74f), new Vector2(0f, 0.5f), new Vector2(86f, 0f), Color.white);
+            badge.sprite = Resources.Load<Sprite>("NeonTanks/UI/LevelNumberBadge");
+            CreateLabel((LevelManager.CurrentIndex + 1).ToString(), badge.transform, 32, Color.white, new Vector2(50f, 50f), new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
+
+            // В префабах заголовок уже содержит «УРОВЕНЬ N / НАЗВАНИЕ».
+            string title = LevelManager.Current.title;
+            int separator = title.IndexOf('/');
+            if (separator >= 0)
+            {
+                title = title.Substring(0, separator).TrimEnd() + "  <color=#" + ColorUtility.ToHtmlStringRGB(Cyan) + ">/  " + title.Substring(separator + 1).TrimStart() + "</color>";
+            }
+
+            Text heading = CreateLabel(title, panel.transform, 26, Color.white, new Vector2(504f, 34f), new Vector2(0f, 0.5f), new Vector2(396f, 15f), FontStyle.Bold);
+            heading.alignment = TextAnchor.MiddleLeft;
+            heading.horizontalOverflow = HorizontalWrapMode.Wrap;
+            heading.verticalOverflow = VerticalWrapMode.Truncate;
+            heading.resizeTextForBestFit = true;
+            heading.resizeTextMinSize = 20;
+            heading.resizeTextMaxSize = 26;
+
+            Text hint = CreateLabel(LevelManager.Current.hint, panel.transform, 14, new Color(0.76f, 0.80f, 0.89f), new Vector2(504f, 22f), new Vector2(0f, 0.5f), new Vector2(396f, -19f));
+            hint.alignment = TextAnchor.MiddleLeft;
+            hint.horizontalOverflow = HorizontalWrapMode.Wrap;
+            hint.verticalOverflow = VerticalWrapMode.Truncate;
+            hint.resizeTextForBestFit = true;
+            hint.resizeTextMinSize = 12;
+            hint.resizeTextMaxSize = 14;
+            return panel.gameObject;
+        }
+
+        private GameObject BuildPauseOverlay(Transform parent)
+        {
+            Image backdrop = CreateImage("PauseOverlay", parent, Vector2.zero, Vector2.zero, Vector2.zero, new Color(0.005f, 0.007f, 0.020f, 0.56f));
+            backdrop.raycastTarget = true;
+            backdrop.rectTransform.anchorMax = Vector2.one;
+
+            RectTransform safeArea = CreateRect("SafeArea", backdrop.transform, Vector2.zero, Vector2.zero, Vector2.zero);
+            safeArea.gameObject.AddComponent<UISafeArea>();
+
+            Image panel = CreateImage("PauseCard", safeArea, new Vector2(460f, 284f), new Vector2(0.5f, 0.5f), Vector2.zero, Color.white);
+            panel.sprite = Resources.Load<Sprite>("NeonTanks/UI/PausePanel");
+            panel.type = Image.Type.Sliced;
+
+            CreateLabel("ПАУЗА", panel.transform, 42, Color.white, new Vector2(200f, 60f), new Vector2(0.5f, 0.5f), new Vector2(0f, 76f), FontStyle.Bold);
+            for (int i = 0; i < 2; i++)
+            {
+                Image accent = CreateImage("TitleAccent_" + i, panel.transform, new Vector2(90f, 4f), new Vector2(0.5f, 0.5f), new Vector2(i == 0 ? -152f : 152f, 76f), i == 0 ? Cyan : Magenta);
+                accent.sprite = Resources.Load<Sprite>("NeonTanks/UI/PauseTitleAccent");
+                if (i == 1) accent.rectTransform.localScale = new Vector3(-1f, 1f, 1f);
+            }
+
+            CreatePauseMenuButton(panel.transform, "ContinueButton", "ПРОДОЛЖИТЬ", "PauseContinue", "PausePlayIcon", 0f, () => SetPaused(false));
+            CreatePauseMenuButton(panel.transform, "RestartButton", "НАЧАТЬ ЗАНОВО", "PauseRestart", "PauseRestartIcon", -77f, RestartMatch);
+            return backdrop.gameObject;
+        }
+
+        private void CreatePauseMenuButton(Transform parent, string name, string label, string art, string iconArt, float y, UnityEngine.Events.UnityAction onClick)
+        {
+            Button button = CreateButton(name, parent, "", new Vector2(368f, 66f), new Vector2(0.5f, 0.5f), new Vector2(0f, y), Color.white, onClick);
+            button.image.sprite = Resources.Load<Sprite>("NeonTanks/UI/" + art);
+            button.image.type = Image.Type.Sliced;
+
+            ColorBlock colors = button.colors;
+            colors.normalColor = new Color(0.94f, 0.94f, 0.94f);
+            colors.highlightedColor = Color.white;
+            colors.pressedColor = new Color(0.70f, 0.70f, 0.70f);
+            colors.fadeDuration = 0.08f;
+            button.colors = colors;
+
+            Image icon = CreateImage("Icon", button.transform, new Vector2(30f, 30f), new Vector2(0.5f, 0.5f), new Vector2(-94f, 0f), Color.white);
+            icon.sprite = Resources.Load<Sprite>("NeonTanks/UI/" + iconArt);
+            CreateLabel(label, button.transform, 20, Color.white, new Vector2(270f, 50f), new Vector2(0.5f, 0.5f), new Vector2(28f, 0f), FontStyle.Bold);
         }
 
         private GameObject BuildModalOverlay(
@@ -619,6 +661,7 @@ namespace DemoRicochet
             img.raycastTarget = true;
             Button btn = img.gameObject.AddComponent<Button>();
             btn.targetGraphic = img;
+            btn.navigation = new Navigation { mode = Navigation.Mode.None };
             if (onClick != null)
             {
                 btn.onClick.AddListener(onClick);
