@@ -6,10 +6,11 @@ namespace DemoRicochet
     public class RicochetBullet : MonoBehaviour
     {
         public const float ProjectileHeight = 0.66f;
+        public const float DefaultRadius = 0.14f;
 
         [Header("Параметры полёта и рикошета")]
         public float speed = 14f;
-        public float radius = 0.14f;
+        public float radius = DefaultRadius;
         public int maxBounces = 3;
         public float maxLifeTime = 6f;
         public bool isCyanTeam = true;
@@ -18,6 +19,7 @@ namespace DemoRicochet
         private int _bounceCount;
         private float _lifeTimer;
         private Collider _shooterCollider;
+        private bool _hasClearedShooter;
         private Collider _lastBouncedWall;
         private float _distSinceLastBounce;
 
@@ -55,6 +57,7 @@ namespace DemoRicochet
             direction.y = 0f;
             _direction = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.forward;
             _shooterCollider = shooterCollider;
+            _hasClearedShooter = HasClearedShooter(transform.position, _shooterCollider, radius);
             transform.rotation = Quaternion.LookRotation(_direction, Vector3.up);
 
             BuildNeonBulletVisuals();
@@ -198,14 +201,15 @@ namespace DemoRicochet
 
         private void MoveWithRicochets(float remainingDistance)
         {
-            const float skinOffset = 0.01f;
+            const float skinOffset = 0.015f;
             int safetyIterations = 0;
 
-            while (remainingDistance > 0.0001f && safetyIterations < 4)
+            while (remainingDistance > 0.0001f && safetyIterations < 6)
             {
                 safetyIterations++;
 
-                if (TryFindNextHit(transform.position, _direction, remainingDistance, out RaycastHit hit))
+                bool canHitShooter = _bounceCount > 0 && _hasClearedShooter;
+                if (CastBulletStep(transform.position, radius, _direction, remainingDistance, _shooterCollider, _lastBouncedWall, canHitShooter, out RaycastHit hit, out Vector3 normal))
                 {
                     Vector3 hitCenter = transform.position + _direction * hit.distance;
                     hitCenter.y = ProjectileHeight;
@@ -237,20 +241,14 @@ namespace DemoRicochet
                         return;
                     }
 
-                    Vector3 normal = hit.normal;
-                    normal.y = 0f;
-                    if (normal.sqrMagnitude < 0.0001f)
-                    {
-                        normal = -_direction;
-                    }
-                    else
-                    {
-                        normal.Normalize();
-                    }
-
                     _direction = Vector3.Reflect(_direction, normal).normalized;
-                    transform.position = hitCenter + normal * skinOffset;
+                    transform.position = PushOutsideWall(hitCenter, hit.collider, normal, radius + skinOffset);
                     transform.rotation = Quaternion.LookRotation(_direction, Vector3.up);
+
+                    if (!_hasClearedShooter && HasClearedShooter(transform.position, _shooterCollider, radius))
+                    {
+                        _hasClearedShooter = true;
+                    }
 
                     _bounceCount++;
                     _lastBouncedWall = hit.collider;
@@ -258,12 +256,17 @@ namespace DemoRicochet
 
                     SpawnFlashEffect(hitCenter, GetTeamColor(), 0.75f);
 
-                    remainingDistance -= hit.distance;
+                    remainingDistance = Mathf.Max(0f, remainingDistance - hit.distance);
                 }
                 else
                 {
                     transform.position += _direction * remainingDistance;
                     _distSinceLastBounce += remainingDistance;
+
+                    if (!_hasClearedShooter && HasClearedShooter(transform.position, _shooterCollider, radius))
+                    {
+                        _hasClearedShooter = true;
+                    }
 
                     if (_distSinceLastBounce > radius * 1.5f)
                     {
@@ -275,10 +278,63 @@ namespace DemoRicochet
             }
         }
 
-        private bool TryFindNextHit(Vector3 origin, Vector3 direction, float maxDist, out RaycastHit bestHit)
+        public static Vector3 ComputeSafeFireOrigin(Vector3 tankPos, Vector3 fireDir, Transform muzzlePoint, Collider shooterCollider, float bulletRadius = DefaultRadius)
+        {
+            Vector3 center = new Vector3(tankPos.x, ProjectileHeight, tankPos.z);
+            fireDir.y = 0f;
+            fireDir = fireDir.sqrMagnitude > 0.0001f ? fireDir.normalized : Vector3.forward;
+
+            float desiredDist = 0.90f;
+            if (muzzlePoint != null)
+            {
+                Vector3 muzzleFlat = new Vector3(muzzlePoint.position.x, ProjectileHeight, muzzlePoint.position.z);
+                desiredDist = Mathf.Clamp(Vector3.Distance(center, muzzleFlat), 0.45f, 1.15f);
+            }
+
+            float safeDist = desiredDist;
+            RaycastHit[] hits = Physics.SphereCastAll(center, bulletRadius, fireDir, desiredDist + 0.06f, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < hits.Length; i++)
+            {
+                RaycastHit h = hits[i];
+                if (h.collider == null || h.collider == shooterCollider) continue;
+                if (h.collider.GetComponentInParent<TankHealth>() != null || h.collider.GetComponentInParent<SimpleBoxTank>() != null) continue;
+
+                if (h.distance <= 0.0001f && h.point == Vector3.zero)
+                {
+                    if (TryComputeWallOverlapNormal(center, h.collider, out Vector3 overlapN) && Vector3.Dot(fireDir, overlapN) < -0.0001f)
+                    {
+                        safeDist = 0f;
+                        break;
+                    }
+                    continue;
+                }
+
+                if (h.normal.y > 0.7f) continue;
+
+                if (h.distance - 0.025f < safeDist)
+                {
+                    safeDist = Mathf.Max(0f, h.distance - 0.025f);
+                }
+            }
+
+            return center + fireDir * safeDist;
+        }
+
+        public static bool CastBulletStep(
+            Vector3 origin,
+            float sphereRadius,
+            Vector3 direction,
+            float maxDist,
+            Collider shooterCollider,
+            Collider lastBouncedWall,
+            bool canHitShooter,
+            out RaycastHit bestHit,
+            out Vector3 bestNormal)
         {
             bestHit = default;
-            RaycastHit[] hits = Physics.SphereCastAll(origin, radius, direction, maxDist, ~0, QueryTriggerInteraction.Ignore);
+            bestNormal = -direction;
+
+            RaycastHit[] hits = Physics.SphereCastAll(origin, sphereRadius, direction, maxDist, ~0, QueryTriggerInteraction.Ignore);
             if (hits == null || hits.Length == 0)
             {
                 return false;
@@ -291,22 +347,57 @@ namespace DemoRicochet
             {
                 RaycastHit h = hits[i];
                 if (h.collider == null) continue;
-                if (h.normal.y > 0.7f) continue;
-                if (_bounceCount == 0 && h.collider == _shooterCollider) continue;
-                if (h.collider == _lastBouncedWall && h.distance < 0.05f) continue;
+                if (h.collider == lastBouncedWall) continue;
+                if (h.collider == shooterCollider && !canHitShooter) continue;
 
-                if (h.distance <= 0.0001f && h.point == Vector3.zero)
+                bool isOverlapAtOrigin = h.distance <= 0.0001f && h.point == Vector3.zero;
+                if (isOverlapAtOrigin)
                 {
-                    if (_bounceCount > 0 && (h.collider.GetComponentInParent<TankHealth>() != null || h.collider.GetComponentInParent<SimpleBoxTank>() != null))
+                    bool isTank = h.collider.GetComponentInParent<TankHealth>() != null
+                                  || h.collider.GetComponentInParent<SimpleBoxTank>() != null;
+                    if (isTank)
                     {
+                        if (h.collider == shooterCollider && !canHitShooter) continue;
                         Vector3 toTank = h.collider.bounds.center - origin;
                         toTank.y = 0f;
                         if (Vector3.Dot(direction, toTank) > 0f)
                         {
                             bestHit = h;
+                            bestHit.distance = 0f;
+                            bestNormal = toTank.sqrMagnitude > 0.0001f ? -toTank.normalized : -direction;
                             return true;
                         }
+                        continue;
                     }
+
+                    if (TryComputeWallOverlapNormal(origin, h.collider, out Vector3 overlapNormal)
+                        && Vector3.Dot(direction, overlapNormal) < -0.0001f)
+                    {
+                        if (IsInternalColliderSeam(h.collider, origin - overlapNormal * sphereRadius, overlapNormal))
+                        {
+                            continue;
+                        }
+
+                        bestHit = h;
+                        bestHit.distance = 0f;
+                        bestHit.normal = overlapNormal;
+                        bestNormal = overlapNormal;
+                        return true;
+                    }
+
+                    continue;
+                }
+
+                if (h.normal.y > 0.7f) continue;
+
+                Vector3 n = new Vector3(h.normal.x, 0f, h.normal.z);
+                if (n.sqrMagnitude < 0.0001f) continue;
+                n.Normalize();
+
+                if (Vector3.Dot(direction, n) >= -0.0001f) continue;
+
+                if (IsInternalColliderSeam(h.collider, h.point, n))
+                {
                     continue;
                 }
 
@@ -314,11 +405,116 @@ namespace DemoRicochet
                 {
                     closestDist = h.distance;
                     bestHit = h;
+                    bestNormal = n;
                     found = true;
                 }
             }
 
             return found;
+        }
+
+        private static bool IsInternalColliderSeam(Collider hitCollider, Vector3 hitPoint, Vector3 outwardNormal)
+        {
+            BoxCollider[] siblings = hitCollider.GetComponents<BoxCollider>();
+            if (siblings == null || siblings.Length <= 1) return false;
+
+            Vector3 probe = hitPoint + outwardNormal * 0.025f;
+            probe.y = hitCollider.bounds.center.y;
+
+            for (int i = 0; i < siblings.Length; i++)
+            {
+                BoxCollider other = siblings[i];
+                if (other == null || other == hitCollider || !other.enabled) continue;
+
+                Vector3 closest = other.ClosestPoint(probe);
+                Vector2 diffXZ = new Vector2(closest.x - probe.x, closest.z - probe.z);
+                if (diffXZ.sqrMagnitude < 0.00001f)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public static bool TryComputeWallOverlapNormal(Vector3 origin, Collider col, out Vector3 outwardNormal)
+        {
+            outwardNormal = Vector3.zero;
+            if (col == null) return false;
+
+            Vector3 probe = new Vector3(origin.x, col.bounds.center.y, origin.z);
+            Vector3 closest = col.ClosestPoint(probe);
+            Vector3 delta = new Vector3(probe.x - closest.x, 0f, probe.z - closest.z);
+
+            if (delta.sqrMagnitude > 0.000001f)
+            {
+                outwardNormal = delta.normalized;
+                return true;
+            }
+
+            if (col is BoxCollider box)
+            {
+                Vector3 localPt = box.transform.InverseTransformPoint(probe) - box.center;
+                Vector3 half = box.size * 0.5f;
+                Vector3 scale = box.transform.lossyScale;
+
+                float dx = (half.x - Mathf.Abs(localPt.x)) * Mathf.Abs(scale.x);
+                float dz = (half.z - Mathf.Abs(localPt.z)) * Mathf.Abs(scale.z);
+
+                Vector3 localNormal = dx < dz
+                    ? new Vector3(localPt.x >= 0f ? 1f : -1f, 0f, 0f)
+                    : new Vector3(0f, 0f, localPt.z >= 0f ? 1f : -1f);
+
+                Vector3 worldNormal = box.transform.TransformDirection(localNormal);
+                worldNormal.y = 0f;
+                if (worldNormal.sqrMagnitude > 0.0001f)
+                {
+                    outwardNormal = worldNormal.normalized;
+                    return true;
+                }
+            }
+
+            Vector3 fromCenter = new Vector3(origin.x - col.bounds.center.x, 0f, origin.z - col.bounds.center.z);
+            if (fromCenter.sqrMagnitude > 0.0001f)
+            {
+                outwardNormal = fromCenter.normalized;
+                return true;
+            }
+
+            return false;
+        }
+
+        public static Vector3 PushOutsideWall(Vector3 hitCenter, Collider wallCollider, Vector3 outwardNormal, float minClearance)
+        {
+            Vector3 result = hitCenter + outwardNormal * 0.015f;
+            result.y = ProjectileHeight;
+            if (wallCollider == null) return result;
+
+            Vector3 probe = new Vector3(hitCenter.x, wallCollider.bounds.center.y, hitCenter.z);
+            Vector3 closest = wallCollider.ClosestPoint(probe);
+            Vector3 delta = new Vector3(probe.x - closest.x, 0f, probe.z - closest.z);
+
+            if (delta.sqrMagnitude > 0.000001f)
+            {
+                float dist = delta.magnitude;
+                if (dist < minClearance)
+                {
+                    Vector3 pushed = closest + (delta / dist) * minClearance;
+                    result = new Vector3(pushed.x, ProjectileHeight, pushed.z);
+                }
+            }
+
+            return result;
+        }
+
+        private static bool HasClearedShooter(Vector3 bulletPos, Collider shooterCollider, float bulletRadius)
+        {
+            if (shooterCollider == null) return true;
+            Vector3 c = shooterCollider.bounds.center;
+            float dx = bulletPos.x - c.x;
+            float dz = bulletPos.z - c.z;
+            float clearDist = 0.62f + bulletRadius + 0.06f;
+            return (dx * dx + dz * dz) > clearDist * clearDist;
         }
 
         private static void SpawnFlashEffect(Vector3 pos, Color color, float size)

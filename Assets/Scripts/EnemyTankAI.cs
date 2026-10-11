@@ -532,30 +532,15 @@ namespace DemoRicochet
             if (_health != null) _health.NotifyFiredShot();
             _recoilTimer = 0.14f;
 
-            Vector3 center = new Vector3(transform.position.x, ProjectileHeight, transform.position.z);
-            Vector3 spawnPos = _muzzlePoint != null
-                ? new Vector3(_muzzlePoint.position.x, ProjectileHeight, _muzzlePoint.position.z)
-                : center + _currentAimDir * 0.90f;
-
-            float barrelLen = Vector3.Distance(center, spawnPos);
-            RaycastHit[] barrelHits = Physics.RaycastAll(center, _currentAimDir, barrelLen + 0.15f, ~0, QueryTriggerInteraction.Ignore);
-            for (int i = 0; i < barrelHits.Length; i++)
-            {
-                if (barrelHits[i].collider != null && barrelHits[i].collider != _myCollider && barrelHits[i].normal.y < 0.7f)
-                {
-                    spawnPos = center + _currentAimDir * 0.35f;
-                    break;
-                }
-            }
-
+            Vector3 spawnPos = RicochetBullet.ComputeSafeFireOrigin(transform.position, _currentAimDir, _muzzlePoint, _myCollider);
             RicochetBullet.Spawn(spawnPos, _currentAimDir, _myCollider, false);
 
             if (_health != null && _health.HasRapidFire)
             {
                 Vector3 leftDir = Quaternion.Euler(0f, -8.5f, 0f) * _currentAimDir;
                 Vector3 rightDir = Quaternion.Euler(0f, 8.5f, 0f) * _currentAimDir;
-                RicochetBullet.Spawn(spawnPos, leftDir, _myCollider, false);
-                RicochetBullet.Spawn(spawnPos, rightDir, _myCollider, false);
+                RicochetBullet.Spawn(RicochetBullet.ComputeSafeFireOrigin(transform.position, leftDir, _muzzlePoint, _myCollider), leftDir, _myCollider, false);
+                RicochetBullet.Spawn(RicochetBullet.ComputeSafeFireOrigin(transform.position, rightDir, _muzzlePoint, _myCollider), rightDir, _myCollider, false);
             }
         }
 

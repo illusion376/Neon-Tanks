@@ -359,8 +359,8 @@ namespace DemoRicochet
             colA.size = new Vector3(2.0f * scaleXZ, 1.2f, 0.68f * scaleXZ);
 
             BoxCollider colB = root.AddComponent<BoxCollider>();
-            colB.center = new Vector3(-0.66f * scaleXZ, 0.6f, 0.34f * scaleXZ);
-            colB.size = new Vector3(0.68f * scaleXZ, 1.2f, 1.32f * scaleXZ);
+            colB.center = new Vector3(-0.66f * scaleXZ, 0.6f, 0f * scaleXZ);
+            colB.size = new Vector3(0.68f * scaleXZ, 1.2f, 2.0f * scaleXZ);
 
             NeonVisuals.CreateContactShadow(root.transform, new Vector2(2.6f, 2.6f));
         }

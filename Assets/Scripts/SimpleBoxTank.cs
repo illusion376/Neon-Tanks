@@ -337,41 +337,26 @@ namespace DemoRicochet
             if (_health != null) _health.NotifyFiredShot();
 
             Collider myCollider = GetComponent<Collider>();
-            Vector3 spawnPos = GetFireOrigin();
+            Vector3 spawnPos = GetFireOrigin(_aimDirection);
             RicochetBullet.Spawn(spawnPos, _aimDirection, myCollider, isCyanTeam);
 
             if (rapid)
             {
                 Vector3 leftDir = Quaternion.Euler(0f, -8.5f, 0f) * _aimDirection;
                 Vector3 rightDir = Quaternion.Euler(0f, 8.5f, 0f) * _aimDirection;
-                RicochetBullet.Spawn(spawnPos, leftDir, myCollider, isCyanTeam);
-                RicochetBullet.Spawn(spawnPos, rightDir, myCollider, isCyanTeam);
+                RicochetBullet.Spawn(GetFireOrigin(leftDir), leftDir, myCollider, isCyanTeam);
+                RicochetBullet.Spawn(GetFireOrigin(rightDir), rightDir, myCollider, isCyanTeam);
             }
         }
 
         public Vector3 GetFireOrigin()
         {
-            Vector3 center = new Vector3(transform.position.x, ProjectileHeight, transform.position.z);
-            Vector3 spawnPos = center + _aimDirection * 0.90f;
+            return GetFireOrigin(_aimDirection);
+        }
 
-            if (_muzzlePoint != null)
-            {
-                spawnPos = new Vector3(_muzzlePoint.position.x, ProjectileHeight, _muzzlePoint.position.z);
-            }
-
-            Collider myCollider = GetComponent<Collider>();
-            float barrelLen = Vector3.Distance(center, spawnPos);
-            RaycastHit[] barrelHits = Physics.RaycastAll(center, _aimDirection, barrelLen + 0.15f, ~0, QueryTriggerInteraction.Ignore);
-            for (int i = 0; i < barrelHits.Length; i++)
-            {
-                if (barrelHits[i].collider != null && barrelHits[i].collider != myCollider && barrelHits[i].normal.y < 0.7f)
-                {
-                    spawnPos = center + _aimDirection * 0.35f;
-                    break;
-                }
-            }
-
-            return spawnPos;
+        public Vector3 GetFireOrigin(Vector3 fireDir)
+        {
+            return RicochetBullet.ComputeSafeFireOrigin(transform.position, fireDir, _muzzlePoint, GetComponent<Collider>());
         }
 
         private static Transform FindBySuffix(Transform root, string suffix)

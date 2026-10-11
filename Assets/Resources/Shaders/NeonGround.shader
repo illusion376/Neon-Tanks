@@ -54,9 +54,13 @@ Shader "NeonRicochet/NeonGround"
                 else
                 {
                     // LineRenderer Tile UV: one repeat = one dash and one gap.
+                    // Render both the sharp inner core (|p.y| < 1/3) and soft outer halo (|p.y| < 1) from the same UV.
                     float u=frac(i.uv.x);
-                    float dash=smoothstep(.02,.08,u)*(1-smoothstep(_DashFill-.08,_DashFill,u));
-                    a=dash*pow(saturate(1-abs(p.y)),1.5);
+                    float coreDash=smoothstep(.02,.08,u)*(1-smoothstep(_DashFill-.08,_DashFill,u));
+                    float glowDash=smoothstep(.0,.12,u)*(1-smoothstep(_DashFill-.12,min(1.0,_DashFill+.04),u));
+                    float coreY=pow(saturate(1-abs(p.y)*3.0),1.5);
+                    float glowY=pow(saturate(1-abs(p.y)),1.6);
+                    a=saturate(coreDash*coreY+glowDash*glowY*0.16);
                 }
                 return half4(_Color.rgb*i.color.rgb,a*saturate(_Color.a*i.color.a));
             }

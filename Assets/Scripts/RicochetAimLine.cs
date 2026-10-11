@@ -81,12 +81,12 @@ namespace DemoRicochet
             _glowLine = glowObject.AddComponent<LineRenderer>();
 
             _lineMaterial = new Material(shader) { name = "AimDashCore" };
-            _glowMaterial = new Material(shader) { name = "AimDashGlow" };
+            _glowMaterial = new Material(shader) { name = "AimDashBounce" };
             _lineMaterial.SetFloat("_Mode", 6f);
             _glowMaterial.SetFloat("_Mode", 6f);
 
-            SetupRenderer(_line, _lineMaterial, 0.95f, 0.55f);
-            SetupRenderer(_glowLine, _glowMaterial, 0.28f, 0.10f);
+            SetupRenderer(_line, _lineMaterial, 0.95f, 0.78f);
+            SetupRenderer(_glowLine, _glowMaterial, 0.75f, 0.45f);
             UpdateVisualSettings();
         }
 
@@ -97,7 +97,7 @@ namespace DemoRicochet
             line.textureMode = LineTextureMode.Tile;
             line.alignment = LineAlignment.View;
             line.numCapVertices = 0;
-            line.numCornerVertices = 4;
+            line.numCornerVertices = 0;
             line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             line.receiveShadows = false;
             line.startColor = new Color(1f, 1f, 1f, startAlpha);
@@ -110,15 +110,16 @@ namespace DemoRicochet
             float fill = Mathf.Clamp(dashLength / period, 0.15f, 0.9f);
             Vector2 tiling = new Vector2(1f / period, 1f);
 
-            _line.widthMultiplier = dashWidth;
-            _glowLine.widthMultiplier = dashWidth * 3f;
+            float fullWidth = dashWidth * 3f;
+            _line.widthMultiplier = fullWidth;
+            _glowLine.widthMultiplier = fullWidth;
             _line.textureScale = tiling;
             _glowLine.textureScale = tiling;
 
             _lineMaterial.SetFloat("_DashFill", fill);
             _glowMaterial.SetFloat("_DashFill", fill);
-            _lineMaterial.SetColor("_Color", aimColor.linear * 3f);
-            _glowMaterial.SetColor("_Color", aimColor.linear * 1.4f);
+            _lineMaterial.SetColor("_Color", aimColor.linear * 3.2f);
+            _glowMaterial.SetColor("_Color", aimColor.linear * 3.0f);
         }
 
         private void LateUpdate()
@@ -160,7 +161,7 @@ namespace DemoRicochet
 
         private void DrawPredictedPath()
         {
-            const float skinOffset = 0.01f;
+            const float skinOffset = 0.015f;
 
             Vector3 origin = _tank.GetFireOrigin();
             origin.y = RicochetBullet.ProjectileHeight;
@@ -178,7 +179,16 @@ namespace DemoRicochet
             {
                 float distance = Mathf.Min(maxStepDistance, remainingLength);
 
-                if (!TrySimulateHit(origin, direction, distance, bounce, lastBouncedWall, out RaycastHit hit))
+                if (!RicochetBullet.CastBulletStep(
+                        origin,
+                        bulletRadius,
+                        direction,
+                        distance,
+                        _tankCollider,
+                        lastBouncedWall,
+                        false,
+                        out RaycastHit hit,
+                        out Vector3 normal))
                 {
                     Vector3 endPoint = origin + direction * distance;
                     endPoint.y = RicochetBullet.ProjectileHeight;
@@ -188,79 +198,42 @@ namespace DemoRicochet
 
                 Vector3 hitCenter = origin + direction * hit.distance;
                 hitCenter.y = RicochetBullet.ProjectileHeight;
-                _points.Add(hitCenter);
-                remainingLength -= hit.distance;
+                if ((_points[_points.Count - 1] - hitCenter).sqrMagnitude > 0.000025f)
+                {
+                    _points.Add(hitCenter);
+                }
+                remainingLength = Mathf.Max(0f, remainingLength - hit.distance);
 
                 bool hitTank = hit.collider.GetComponentInParent<TankHealth>() != null
                                || hit.collider.GetComponentInParent<SimpleBoxTank>() != null;
                 if (hitTank || bounce == MaxReflections) break;
 
-                Vector3 normal = hit.normal;
-                normal.y = 0f;
-                normal = normal.sqrMagnitude > 0.0001f ? normal.normalized : -direction;
-
                 direction = Vector3.Reflect(direction, normal).normalized;
-                origin = hitCenter + normal * skinOffset;
-                origin.y = RicochetBullet.ProjectileHeight;
+                origin = RicochetBullet.PushOutsideWall(hitCenter, hit.collider, normal, bulletRadius + skinOffset);
                 lastBouncedWall = hit.collider;
             }
 
-            _line.positionCount = _points.Count;
-            _glowLine.positionCount = _points.Count;
-            for (int i = 0; i < _points.Count; i++)
+            if (_points.Count >= 2)
             {
-                _line.SetPosition(i, _points[i]);
-                _glowLine.SetPosition(i, _points[i]);
+                _line.positionCount = 2;
+                _line.SetPosition(0, _points[0]);
+                _line.SetPosition(1, _points[1]);
             }
-        }
-
-        private bool TrySimulateHit(
-            Vector3 origin,
-            Vector3 direction,
-            float maxDist,
-            int currentBounce,
-            Collider lastBouncedWall,
-            out RaycastHit bestHit)
-        {
-            bestHit = default;
-            RaycastHit[] hits = Physics.SphereCastAll(origin, bulletRadius, direction, maxDist, ~0, QueryTriggerInteraction.Ignore);
-
-            float closestDist = float.MaxValue;
-            bool found = false;
-
-            for (int i = 0; i < hits.Length; i++)
+            else
             {
-                RaycastHit h = hits[i];
-                if (h.collider == null || h.normal.y > 0.7f) continue;
-                if (currentBounce == 0 && h.collider == _tankCollider) continue;
-                if (h.collider == lastBouncedWall && h.distance < 0.05f) continue;
-
-                if (h.distance <= 0.0001f && h.point == Vector3.zero)
-                {
-                    bool isTank = h.collider.GetComponentInParent<TankHealth>() != null
-                                  || h.collider.GetComponentInParent<SimpleBoxTank>() != null;
-                    if (currentBounce > 0 && isTank)
-                    {
-                        Vector3 toTank = h.collider.bounds.center - origin;
-                        toTank.y = 0f;
-                        if (Vector3.Dot(direction, toTank) > 0f)
-                        {
-                            bestHit = h;
-                            return true;
-                        }
-                    }
-                    continue;
-                }
-
-                if (h.distance < closestDist)
-                {
-                    closestDist = h.distance;
-                    bestHit = h;
-                    found = true;
-                }
+                _line.positionCount = 0;
             }
 
-            return found;
+            if (_points.Count >= 3)
+            {
+                _glowLine.positionCount = 2;
+                _glowLine.SetPosition(0, _points[1]);
+                _glowLine.SetPosition(1, _points[2]);
+            }
+            else
+            {
+                _glowLine.positionCount = 0;
+            }
         }
 
         private void OnDestroy()
