@@ -357,11 +357,11 @@ namespace DemoRicochet
 
             // Г-образное укрытие собирается из двух перпендикулярных BoxCollider
             BoxCollider colA = root.AddComponent<BoxCollider>();
-            colA.center = new Vector3(0f * scaleXZ, 0.6f, 0.66f * scaleXZ);
+            colA.center = new Vector3(0f * scaleXZ, 0.6f, -0.66f * scaleXZ);
             colA.size = new Vector3(2.0f * scaleXZ, 1.2f, 0.68f * scaleXZ);
 
             BoxCollider colB = root.AddComponent<BoxCollider>();
-            colB.center = new Vector3(-0.66f * scaleXZ, 0.6f, -0.34f * scaleXZ);
+            colB.center = new Vector3(-0.66f * scaleXZ, 0.6f, 0.34f * scaleXZ);
             colB.size = new Vector3(0.68f * scaleXZ, 1.2f, 1.32f * scaleXZ);
 
             NeonVisuals.CreateContactShadow(root.transform, new Vector2(2.6f, 2.6f));
