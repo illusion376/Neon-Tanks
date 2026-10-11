@@ -5,41 +5,69 @@ using UnityEngine.InputSystem;
 
 namespace DemoRicochet
 {
-
+    /// <summary>
+    /// Шаг 3 переноса визуала: Танк игрока на базе дизайнерской 3D-модели NT_Tank_Cyan.
+    /// Использует встроенные в FBX узлы __TurretPivot, __BarrelRecoil и __Muzzle,
+    /// а также неоновую подсветку днища, вращающееся кольцо и отдачу ствола при выстреле.
+    /// </summary>
     public class SimpleBoxTank : MonoBehaviour
     {
-        [Header("Настройки движения")]
-        public float moveSpeed = 5.0f;
-        public float bodyTurnSpeed = 720f;
+        public const float ProjectileHeight = 0.66f;
 
-        private Transform _bodyVisual;
+        [Header("Настройки движения и стрельбы")]
+        public bool isCyanTeam = true;
+        public float moveSpeed = 8.2f;
+        public float bodyTurnSpeed = 540f;
+        public float fireCooldown = 0.35f;
+
+        private Transform _hullTransform;
         private Transform _turretPivot;
+        private Transform _barrelRecoil;
         private Transform _muzzlePoint;
-        private Rigidbody _rb;
+        private Transform _ringTransform;
+        private Transform _shadowTransform;
+
+        private Quaternion _hullBasis;
+        private Quaternion _turretBasis;
+        private Vector3 _recoilStartLocalPos;
+        private Vector3 _recoilBackLocalDir;
+
+        private float _hullYaw;
+        private float _aimYaw;
+        private float _recoilTimer;
+        private float _cooldownTimer;
+        private Vector3 _aimDirection = Vector3.forward;
         private Vector3 _moveInput;
+        private Rigidbody _rb;
+        private TankHealth _health;
 
-        //Точка на конце ствола, откуда будут вылетать снаряды и луч прицела
         public Transform MuzzlePoint => _muzzlePoint;
+        public Vector3 AimDirection => _aimDirection;
+        public TankHealth Health => _health;
 
-        //Текущее направление ствола башни в горизонтальной плоскости
-        public Vector3 AimDirection => _turretPivot != null ? _turretPivot.forward : transform.forward;
-
-        
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoSpawnTank()
         {
             if (FindAnyObjectByType<SimpleBoxTank>() == null)
             {
                 GameObject tankObj = new GameObject("PlayerTank");
-                tankObj.transform.position = new Vector3(0f, 0f, -4f);
+                // Стартовая позиция в левой нижней части арены (свободная от укрытий)
+                tankObj.transform.position = new Vector3(-8.4f, 0f, -3.5f);
                 tankObj.AddComponent<SimpleBoxTank>();
             }
         }
 
         private void Awake()
         {
-            BuildTankHierarchy();
+            NeonVisuals.EnsureInitialized();
+            BuildNeonTankVisuals();
             SetupPhysics();
+
+            _health = GetComponent<TankHealth>();
+            if (_health == null)
+            {
+                _health = gameObject.AddComponent<TankHealth>();
+            }
 
             if (FindAnyObjectByType<RicochetAimLine>() == null)
             {
@@ -47,58 +75,84 @@ namespace DemoRicochet
             }
         }
 
-        private void BuildTankHierarchy()
+        private void BuildNeonTankVisuals()
         {
-            Shader litShader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            string modelPath = isCyanTeam ? "Tanks/NT_Tank_Cyan" : "Tanks/NT_Tank_Magenta";
+            GameObject modelWrapper = NeonVisuals.InstantiateModel(modelPath, transform, "TankModel", isCyanTeam);
+            if (modelWrapper == null) return;
 
-            Color hullColor = new Color(0.25f, 0.80f, 0.45f);   
-            Color turretColor = new Color(0.18f, 0.62f, 0.35f); 
-            Color barrelColor = new Color(0.85f, 0.90f, 0.85f); 
+            _hullTransform = modelWrapper.transform;
+            _hullTransform.localScale = Vector3.one * 0.6f;
 
-            _bodyVisual = new GameObject("BodyPivot").transform;
-            _bodyVisual.SetParent(transform, false);
+            _turretPivot = FindBySuffix(_hullTransform, "__TurretPivot");
+            _barrelRecoil = FindBySuffix(_hullTransform, "__BarrelRecoil");
+            _muzzlePoint = FindBySuffix(_hullTransform, "__Muzzle");
 
-            CreateRectPart("HullBox", _bodyVisual,
-                localPos: new Vector3(0f, 0.225f, 0f),
-                localScale: new Vector3(1.1f, 0.45f, 1.4f),
-                hullColor, litShader);
+            if (_turretPivot != null && _muzzlePoint != null)
+            {
+                // Выравниваем базовый поворот FBX-модели так, чтобы ствол при 0° смотрел строго вдоль +Z
+                Vector3 nativeForward = _muzzlePoint.position - _turretPivot.position;
+                nativeForward.y = 0f;
+                if (nativeForward.sqrMagnitude < 0.0001f) nativeForward = Vector3.forward;
 
-            CreateRectPart("HullFrontMark", _bodyVisual,
-                localPos: new Vector3(0f, 0.46f, 0.5f),
-                localScale: new Vector3(0.7f, 0.05f, 0.2f),
-                barrelColor, litShader);
+                float offsetAngle = -Mathf.Atan2(nativeForward.x, nativeForward.z) * Mathf.Rad2Deg;
+                _hullTransform.localRotation = Quaternion.AngleAxis(offsetAngle, Vector3.up);
+                _hullBasis = _hullTransform.localRotation;
+                _turretBasis = _turretPivot.localRotation;
+            }
 
-            _turretPivot = new GameObject("TurretPivot").transform;
-            _turretPivot.SetParent(transform, false);
-            _turretPivot.localPosition = new Vector3(0f, 0.55f, 0f);
+            if (_barrelRecoil != null && _barrelRecoil.parent != null)
+            {
+                _recoilStartLocalPos = _barrelRecoil.localPosition;
+                _recoilBackLocalDir = _barrelRecoil.parent.InverseTransformDirection(-Vector3.forward);
+            }
 
-            CreateRectPart("TurretBox", _turretPivot,
-                localPos: Vector3.zero,
-                localScale: new Vector3(0.7f, 0.3f, 0.8f),
-                turretColor, litShader);
+            // Мягкая контактная тень, неоновый ореол и пунктирное кольцо команды под танком
+            GameObject shadowObj = NeonVisuals.CreateContactShadow(transform, new Vector2(1.65f, 1.85f), 0.62f);
+            if (shadowObj != null)
+            {
+                _shadowTransform = shadowObj.transform;
+                _shadowTransform.localPosition = new Vector3(0.12f, 0.008f, 0.08f);
+            }
 
-            CreateRectPart("BarrelBox", _turretPivot,
-                localPos: new Vector3(0f, 0f, 0.6f),
-                localScale: new Vector3(0.18f, 0.18f, 0.75f),
-                barrelColor, litShader);
+            Shader groundShader = NeonVisuals.GroundShader;
+            if (groundShader != null)
+            {
+                Color teamTint = isCyanTeam ? new Color(0.015f, 0.78f, 1.0f) : new Color(1.0f, 0.025f, 0.56f);
 
-            _muzzlePoint = new GameObject("MuzzlePoint").transform;
-            _muzzlePoint.SetParent(_turretPivot, false);
-            _muzzlePoint.localPosition = new Vector3(0f, 0f, 1.05f);
+                // Неоновое свечение на полу под танком
+                Material glowMat = new Material(groundShader) { name = "TankUnderglow" };
+                glowMat.SetFloat("_Mode", 0f);
+                glowMat.SetVector("_Color", teamTint.linear * 1.8f);
+                GameObject glowQuad = NeonVisuals.CreateEffectQuad("Underglow", transform, glowMat);
+                glowQuad.transform.localPosition = new Vector3(0f, 0.028f, 0f);
+                glowQuad.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                glowQuad.transform.localScale = new Vector3(2.8f, 2.8f, 1f);
+
+                // Вращающееся пунктирное кольцо вокруг танка
+                Material ringMat = new Material(groundShader) { name = "TankTeamRing" };
+                ringMat.SetFloat("_Mode", 1f);
+                ringMat.SetVector("_Color", teamTint.linear * 2.2f);
+                GameObject ringQuad = NeonVisuals.CreateEffectQuad("TeamRing", transform, ringMat);
+                ringQuad.transform.localPosition = new Vector3(0f, 0.035f, 0f);
+                ringQuad.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                ringQuad.transform.localScale = new Vector3(1.85f, 1.85f, 1f);
+                _ringTransform = ringQuad.transform;
+            }
         }
 
         private void SetupPhysics()
         {
-            BoxCollider col = gameObject.AddComponent<BoxCollider>();
-            col.center = new Vector3(0f, 0.35f, 0f);
-            col.size = new Vector3(1.15f, 0.7f, 1.4f);
+            // Круглый в плане (или компактный квадратный) коллайдер, чтобы танк плавно огибал углы укрытий
+            SphereCollider col = gameObject.AddComponent<SphereCollider>();
+            col.center = new Vector3(0f, 0.45f, 0f);
+            col.radius = 0.62f;
 
             _rb = gameObject.AddComponent<Rigidbody>();
             _rb.useGravity = false;
             _rb.mass = 10f;
             _rb.interpolation = RigidbodyInterpolation.Interpolate;
             _rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-
             _rb.constraints = RigidbodyConstraints.FreezePositionY |
                               RigidbodyConstraints.FreezeRotationX |
                               RigidbodyConstraints.FreezeRotationY |
@@ -107,58 +161,29 @@ namespace DemoRicochet
 
         private void Update()
         {
-            ReadMoveInput();
-            AimTurretAtMouse();
-            HandleShooting();
-        }
-
-        private void HandleShooting()
-        {
-            bool firePressed = false;
-#if ENABLE_INPUT_SYSTEM
-            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
-                firePressed = true;
-            if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
-                firePressed = true;
-#else
-            if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Space))
-                firePressed = true;
-#endif
-            if (!firePressed || _muzzlePoint == null || _turretPivot == null) return;
-
-            Collider myCollider = GetComponent<Collider>();
-            Vector3 spawnPos = GetFireOrigin();
-            RicochetBullet.Spawn(spawnPos, AimDirection, myCollider);
-        }
-
-        /// <summary>
-        /// Возвращает точную стартовую позицию снаряда (и луча прицела) с учётом того,
-        /// не упёрся ли ствол вплотную в стену.
-        /// </summary>
-        public Vector3 GetFireOrigin()
-        {
-            if (_muzzlePoint == null || _turretPivot == null) return transform.position;
-
-            Collider myCollider = GetComponent<Collider>();
-            Vector3 spawnPos = _muzzlePoint.position;
-
-            float barrelLen = Vector3.Distance(_turretPivot.position, _muzzlePoint.position);
-            RaycastHit[] barrelHits = Physics.RaycastAll(_turretPivot.position, AimDirection, barrelLen + 0.15f, ~0, QueryTriggerInteraction.Ignore);
-            for (int i = 0; i < barrelHits.Length; i++)
+            if (_health != null && _health.IsDead)
             {
-                if (barrelHits[i].collider != null && barrelHits[i].collider != myCollider)
-                {
-                    spawnPos = _turretPivot.position + AimDirection * 0.35f;
-                    break;
-                }
+                _moveInput = Vector3.zero;
+                return;
             }
 
-            return spawnPos;
+            if (_cooldownTimer > 0f) _cooldownTimer -= Time.deltaTime;
+
+            ReadMoveInput();
+            AimTurretAtMouse();
+            UpdateVisualRig(Time.deltaTime);
+            HandleShooting();
         }
 
         private void FixedUpdate()
         {
-            MoveTank();
+            if (_health != null && _health.IsDead)
+            {
+                _rb.linearVelocity = Vector3.zero;
+                return;
+            }
+            float speedMult = _health != null ? _health.SpeedMultiplier : 1f;
+            _rb.linearVelocity = _moveInput * (moveSpeed * speedMult);
         }
 
         private void ReadMoveInput()
@@ -179,29 +204,13 @@ namespace DemoRicochet
             x = Input.GetAxisRaw("Horizontal");
             z = Input.GetAxisRaw("Vertical");
 #endif
-
             _moveInput = new Vector3(x, 0f, z).normalized;
-        }
-
-        private void MoveTank()
-        {
-            _rb.linearVelocity = _moveInput * moveSpeed;
-
-            if (_moveInput.sqrMagnitude > 0.001f && _bodyVisual != null)
-            {
-                Quaternion targetRot = Quaternion.LookRotation(_moveInput, Vector3.up);
-                _bodyVisual.rotation = Quaternion.RotateTowards(
-                    _bodyVisual.rotation,
-                    targetRot,
-                    bodyTurnSpeed * Time.fixedDeltaTime
-                );
-            }
         }
 
         private void AimTurretAtMouse()
         {
             Camera cam = Camera.main;
-            if (cam == null || _turretPivot == null) return;
+            if (cam == null) return;
 
             Vector2 mouseScreenPos = Vector2.zero;
 #if ENABLE_INPUT_SYSTEM
@@ -211,50 +220,137 @@ namespace DemoRicochet
             mouseScreenPos = Input.mousePosition;
 #endif
 
-
-            Plane aimPlane = new Plane(Vector3.up, _turretPivot.position);
+            Plane aimPlane = new Plane(Vector3.up, new Vector3(0f, ProjectileHeight, 0f));
             Ray ray = cam.ScreenPointToRay(mouseScreenPos);
 
             if (aimPlane.Raycast(ray, out float enterDist))
             {
                 Vector3 hitPoint = ray.GetPoint(enterDist);
-                Vector3 lookDir = hitPoint - _turretPivot.position;
+                Vector3 lookDir = hitPoint - transform.position;
                 lookDir.y = 0f;
 
                 if (lookDir.sqrMagnitude > 0.001f)
                 {
-                    _turretPivot.rotation = Quaternion.LookRotation(lookDir.normalized, Vector3.up);
+                    _aimDirection = lookDir.normalized;
+                    _aimYaw = Mathf.Atan2(_aimDirection.x, _aimDirection.z) * Mathf.Rad2Deg;
                 }
             }
         }
 
-        private GameObject CreateRectPart(string partName, Transform parent, Vector3 localPos, Vector3 localScale, Color color, Shader shader)
+        private void UpdateVisualRig(float dt)
         {
-            GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cube.name = partName;
-            cube.transform.SetParent(parent, false);
-            cube.transform.localPosition = localPos;
-            cube.transform.localScale = localScale;
+            if (_hullTransform == null) return;
 
-            Collider partCol = cube.GetComponent<Collider>();
-            if (partCol != null)
+            // Корпус поворачивается по направлению движения
+            if (_moveInput.sqrMagnitude > 0.01f)
             {
-                Destroy(partCol);
+                float targetMoveYaw = Mathf.Atan2(_moveInput.x, _moveInput.z) * Mathf.Rad2Deg;
+                _hullYaw = Mathf.MoveTowardsAngle(_hullYaw, targetMoveYaw, bodyTurnSpeed * dt);
             }
 
-            Renderer rend = cube.GetComponent<Renderer>();
-            if (rend != null && shader != null)
+            _hullTransform.localRotation = Quaternion.AngleAxis(_hullYaw, Vector3.up) * _hullBasis;
+
+            if (_shadowTransform != null)
             {
-                Material mat = new Material(shader);
-                mat.color = color;
-                if (mat.HasProperty("_BaseColor"))
+                _shadowTransform.localRotation = Quaternion.Euler(0f, _hullYaw, 0f) * Quaternion.Euler(90f, 0f, 0f);
+            }
+
+            // Башня вращается независимо от корпуса строго в сторону курсора
+            if (_turretPivot != null)
+            {
+                _turretPivot.localRotation = _turretBasis;
+                _turretPivot.rotation = Quaternion.AngleAxis(Mathf.DeltaAngle(_hullYaw, _aimYaw), Vector3.up) * _turretPivot.rotation;
+            }
+
+            // Плавный возврат ствола после отдачи выстрела
+            if (_barrelRecoil != null)
+            {
+                if (_recoilTimer > 0f)
                 {
-                    mat.SetColor("_BaseColor", color);
+                    _recoilTimer = Mathf.Max(0f, _recoilTimer - dt);
+                    float recoilAmount = (_recoilTimer / 0.14f) * 0.10f;
+                    _barrelRecoil.localPosition = _recoilStartLocalPos + _recoilBackLocalDir * recoilAmount;
                 }
-                rend.material = mat;
+                else
+                {
+                    _barrelRecoil.localPosition = _recoilStartLocalPos;
+                }
             }
 
-            return cube;
+            // Вращаем неоновое кольцо под танком
+            if (_ringTransform != null)
+            {
+                _ringTransform.localRotation = Quaternion.Euler(90f, Time.time * 18f, 0f);
+            }
+        }
+
+        private void HandleShooting()
+        {
+            bool firePressed = false;
+#if ENABLE_INPUT_SYSTEM
+            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+                firePressed = true;
+            if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
+                firePressed = true;
+#else
+            if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Space))
+                firePressed = true;
+#endif
+            if (!firePressed || _cooldownTimer > 0f) return;
+
+            bool rapid = _health != null && _health.HasRapidFire;
+            _cooldownTimer = rapid ? fireCooldown * 0.65f : fireCooldown;
+            _recoilTimer = 0.14f;
+            if (_health != null) _health.NotifyFiredShot();
+
+            Collider myCollider = GetComponent<Collider>();
+            Vector3 spawnPos = GetFireOrigin();
+            RicochetBullet.Spawn(spawnPos, _aimDirection, myCollider, isCyanTeam);
+
+            if (rapid)
+            {
+                Vector3 leftDir = Quaternion.Euler(0f, -8.5f, 0f) * _aimDirection;
+                Vector3 rightDir = Quaternion.Euler(0f, 8.5f, 0f) * _aimDirection;
+                RicochetBullet.Spawn(spawnPos, leftDir, myCollider, isCyanTeam);
+                RicochetBullet.Spawn(spawnPos, rightDir, myCollider, isCyanTeam);
+            }
+        }
+
+        public Vector3 GetFireOrigin()
+        {
+            Vector3 center = new Vector3(transform.position.x, ProjectileHeight, transform.position.z);
+            Vector3 spawnPos = center + _aimDirection * 0.90f;
+
+            if (_muzzlePoint != null)
+            {
+                spawnPos = new Vector3(_muzzlePoint.position.x, ProjectileHeight, _muzzlePoint.position.z);
+            }
+
+            Collider myCollider = GetComponent<Collider>();
+            float barrelLen = Vector3.Distance(center, spawnPos);
+            RaycastHit[] barrelHits = Physics.RaycastAll(center, _aimDirection, barrelLen + 0.15f, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < barrelHits.Length; i++)
+            {
+                if (barrelHits[i].collider != null && barrelHits[i].collider != myCollider && barrelHits[i].normal.y < 0.7f)
+                {
+                    spawnPos = center + _aimDirection * 0.35f;
+                    break;
+                }
+            }
+
+            return spawnPos;
+        }
+
+        private static Transform FindBySuffix(Transform root, string suffix)
+        {
+            foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name.EndsWith(suffix, System.StringComparison.Ordinal))
+                {
+                    return t;
+                }
+            }
+            return null;
         }
     }
 }

@@ -1,0 +1,1030 @@
+{
+  "models": [
+    {
+      "name": "NT_Tank_Cyan",
+      "category": "Tanks",
+      "triangles": 844,
+      "vertices": 440,
+      "mesh_objects": 5,
+      "bounds_min": [
+        -1.0509999990463257,
+        -1.274999976158142,
+        0.004500001668930054
+      ],
+      "bounds_max": [
+        1.0509999990463257,
+        1.037500023841858,
+        1.21999990940094
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [
+        "NT_Tank_Cyan__Body",
+        "NT_Tank_Cyan__TrackLeft",
+        "NT_Tank_Cyan__TrackRight",
+        "NT_Tank_Cyan__TurretPivot",
+        "NT_Tank_Cyan__BarrelRecoil",
+        "NT_Tank_Cyan__Muzzle",
+        "NT_Tank_Cyan__Turret"
+      ],
+      "fbx": "Models/Tanks/NT_Tank_Cyan.fbx",
+      "glb": "GLB/NT_Tank_Cyan.glb"
+    },
+    {
+      "name": "NT_Tank_Magenta",
+      "category": "Tanks",
+      "triangles": 844,
+      "vertices": 440,
+      "mesh_objects": 5,
+      "bounds_min": [
+        -1.0509999990463257,
+        -1.274999976158142,
+        0.004500001668930054
+      ],
+      "bounds_max": [
+        1.0509999990463257,
+        1.037500023841858,
+        1.21999990940094
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [
+        "NT_Tank_Magenta__Body",
+        "NT_Tank_Magenta__TrackLeft",
+        "NT_Tank_Magenta__TrackRight",
+        "NT_Tank_Magenta__TurretPivot",
+        "NT_Tank_Magenta__BarrelRecoil",
+        "NT_Tank_Magenta__Muzzle",
+        "NT_Tank_Magenta__Turret"
+      ],
+      "fbx": "Models/Tanks/NT_Tank_Magenta.fbx",
+      "glb": "GLB/NT_Tank_Magenta.glb"
+    },
+    {
+      "name": "NT_Wall_Long_Cyan",
+      "category": "Walls",
+      "triangles": 660,
+      "vertices": 360,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -2.0,
+        -0.3400000035762787,
+        -2.9802322387695312e-08
+      ],
+      "bounds_max": [
+        2.0,
+        0.3400000035762787,
+        1.256500005722046
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Walls/NT_Wall_Long_Cyan.fbx",
+      "glb": "GLB/NT_Wall_Long_Cyan.glb"
+    },
+    {
+      "name": "NT_Wall_Long_Magenta",
+      "category": "Walls",
+      "triangles": 660,
+      "vertices": 360,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -2.0,
+        -0.3400000035762787,
+        -2.9802322387695312e-08
+      ],
+      "bounds_max": [
+        2.0,
+        0.3400000035762787,
+        1.256500005722046
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Walls/NT_Wall_Long_Magenta.fbx",
+      "glb": "GLB/NT_Wall_Long_Magenta.glb"
+    },
+    {
+      "name": "NT_Wall_Short",
+      "category": "Walls",
+      "triangles": 660,
+      "vertices": 360,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -1.0,
+        -0.3400000035762787,
+        -2.9802322387695312e-08
+      ],
+      "bounds_max": [
+        1.0,
+        0.3400000035762787,
+        1.256500005722046
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Walls/NT_Wall_Short.fbx",
+      "glb": "GLB/NT_Wall_Short.glb"
+    },
+    {
+      "name": "NT_Wall_Hazard",
+      "category": "Walls",
+      "triangles": 816,
+      "vertices": 464,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -2.0,
+        -0.3400000035762787,
+        -2.9802322387695312e-08
+      ],
+      "bounds_max": [
+        2.0,
+        0.3400000035762787,
+        1.256500005722046
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Walls/NT_Wall_Hazard.fbx",
+      "glb": "GLB/NT_Wall_Hazard.glb"
+    },
+    {
+      "name": "NT_Wall_Corner_Inner_Cyan",
+      "category": "Walls",
+      "triangles": 880,
+      "vertices": 480,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.3499999940395355,
+        -0.3499999940395355,
+        0.0
+      ],
+      "bounds_max": [
+        2.0,
+        2.0,
+        1.3050000667572021
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Walls/NT_Wall_Corner_Inner_Cyan.fbx",
+      "glb": "GLB/NT_Wall_Corner_Inner_Cyan.glb"
+    },
+    {
+      "name": "NT_Wall_Corner_Inner_Magenta",
+      "category": "Walls",
+      "triangles": 880,
+      "vertices": 480,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.3499999940395355,
+        -0.3499999940395355,
+        0.0
+      ],
+      "bounds_max": [
+        2.0,
+        2.0,
+        1.3050000667572021
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Walls/NT_Wall_Corner_Inner_Magenta.fbx",
+      "glb": "GLB/NT_Wall_Corner_Inner_Magenta.glb"
+    },
+    {
+      "name": "NT_Wall_Corner_Outer_Cyan",
+      "category": "Walls",
+      "triangles": 880,
+      "vertices": 480,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.3499999940395355,
+        -2.0,
+        0.0
+      ],
+      "bounds_max": [
+        2.0,
+        0.3499999940395355,
+        1.3050000667572021
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Walls/NT_Wall_Corner_Outer_Cyan.fbx",
+      "glb": "GLB/NT_Wall_Corner_Outer_Cyan.glb"
+    },
+    {
+      "name": "NT_Wall_Corner_Outer_Magenta",
+      "category": "Walls",
+      "triangles": 880,
+      "vertices": 480,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.3499999940395355,
+        -2.0,
+        0.0
+      ],
+      "bounds_max": [
+        2.0,
+        0.3499999940395355,
+        1.3050000667572021
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Walls/NT_Wall_Corner_Outer_Magenta.fbx",
+      "glb": "GLB/NT_Wall_Corner_Outer_Magenta.glb"
+    },
+    {
+      "name": "NT_Wall_EndCap",
+      "category": "Walls",
+      "triangles": 44,
+      "vertices": 24,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.2199999988079071,
+        -0.3499999940395355,
+        0.0
+      ],
+      "bounds_max": [
+        0.2199999988079071,
+        0.3499999940395355,
+        1.2300000190734863
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Walls/NT_Wall_EndCap.fbx",
+      "glb": "GLB/NT_Wall_EndCap.glb"
+    },
+    {
+      "name": "NT_Wall_Pillar",
+      "category": "Walls",
+      "triangles": 176,
+      "vertices": 96,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.3580000102519989,
+        -0.3400000035762787,
+        0.0
+      ],
+      "bounds_max": [
+        0.3580000102519989,
+        0.3400000035762787,
+        1.3299999237060547
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Walls/NT_Wall_Pillar.fbx",
+      "glb": "GLB/NT_Wall_Pillar.glb"
+    },
+    {
+      "name": "NT_Gate_Closed",
+      "category": "Walls",
+      "triangles": 396,
+      "vertices": 216,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -2.0,
+        -0.4139999747276306,
+        0.0
+      ],
+      "bounds_max": [
+        2.0,
+        0.38999998569488525,
+        2.2100000381469727
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Walls/NT_Gate_Closed.fbx",
+      "glb": "GLB/NT_Gate_Closed.glb"
+    },
+    {
+      "name": "NT_Gate_Open",
+      "category": "Walls",
+      "triangles": 264,
+      "vertices": 144,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -2.0,
+        -0.4139999747276306,
+        0.0
+      ],
+      "bounds_max": [
+        2.0,
+        0.38999998569488525,
+        2.2100000381469727
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Walls/NT_Gate_Open.fbx",
+      "glb": "GLB/NT_Gate_Open.glb"
+    },
+    {
+      "name": "NT_Floor_Plain",
+      "category": "Floors",
+      "triangles": 92,
+      "vertices": 56,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -1.0,
+        -1.0,
+        -0.11999999731779099
+      ],
+      "bounds_max": [
+        0.9999999403953552,
+        1.0,
+        0.007499999832361937
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Floors/NT_Floor_Plain.fbx",
+      "glb": "GLB/NT_Floor_Plain.glb"
+    },
+    {
+      "name": "NT_Floor_Alternate",
+      "category": "Floors",
+      "triangles": 92,
+      "vertices": 56,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -1.0,
+        -1.0,
+        -0.11999999731779099
+      ],
+      "bounds_max": [
+        0.9999999403953552,
+        1.0,
+        0.007499999832361937
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Floors/NT_Floor_Alternate.fbx",
+      "glb": "GLB/NT_Floor_Alternate.glb"
+    },
+    {
+      "name": "NT_Floor_EdgeHazard",
+      "category": "Floors",
+      "triangles": 188,
+      "vertices": 120,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -1.0,
+        -1.0,
+        -0.11999999731779099
+      ],
+      "bounds_max": [
+        0.9999999403953552,
+        1.0,
+        0.020000001415610313
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Floors/NT_Floor_EdgeHazard.fbx",
+      "glb": "GLB/NT_Floor_EdgeHazard.glb"
+    },
+    {
+      "name": "NT_Floor_CornerHazard",
+      "category": "Floors",
+      "triangles": 236,
+      "vertices": 152,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -1.0,
+        -1.0,
+        -0.11999999731779099
+      ],
+      "bounds_max": [
+        0.9999999403953552,
+        1.0,
+        0.020000001415610313
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Floors/NT_Floor_CornerHazard.fbx",
+      "glb": "GLB/NT_Floor_CornerHazard.glb"
+    },
+    {
+      "name": "NT_Floor_Spawn_Cyan",
+      "category": "Floors",
+      "triangles": 1148,
+      "vertices": 760,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -1.0,
+        -1.0,
+        -0.11999999731779099
+      ],
+      "bounds_max": [
+        0.9999999403953552,
+        1.0,
+        0.041999999433755875
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Floors/NT_Floor_Spawn_Cyan.fbx",
+      "glb": "GLB/NT_Floor_Spawn_Cyan.glb"
+    },
+    {
+      "name": "NT_Floor_Spawn_Magenta",
+      "category": "Floors",
+      "triangles": 1148,
+      "vertices": 760,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -1.0,
+        -1.0,
+        -0.11999999731779099
+      ],
+      "bounds_max": [
+        0.9999999403953552,
+        1.0,
+        0.041999999433755875
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Floors/NT_Floor_Spawn_Magenta.fbx",
+      "glb": "GLB/NT_Floor_Spawn_Magenta.glb"
+    },
+    {
+      "name": "NT_Cover_L_Cyan",
+      "category": "Cover",
+      "triangles": 332,
+      "vertices": 180,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -1.0205000638961792,
+        -1.0205000638961792,
+        0.0
+      ],
+      "bounds_max": [
+        1.0,
+        1.0,
+        0.7740000486373901
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Cover/NT_Cover_L_Cyan.fbx",
+      "glb": "GLB/NT_Cover_L_Cyan.glb"
+    },
+    {
+      "name": "NT_Cover_L_Magenta",
+      "category": "Cover",
+      "triangles": 332,
+      "vertices": 180,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -1.0205000638961792,
+        -1.0205000638961792,
+        0.0
+      ],
+      "bounds_max": [
+        1.0,
+        1.0,
+        0.7740000486373901
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Cover/NT_Cover_L_Magenta.fbx",
+      "glb": "GLB/NT_Cover_L_Magenta.glb"
+    },
+    {
+      "name": "NT_Cover_Square",
+      "category": "Cover",
+      "triangles": 308,
+      "vertices": 168,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.800000011920929,
+        -0.8154999613761902,
+        0.0
+      ],
+      "bounds_max": [
+        0.800000011920929,
+        0.8154999613761902,
+        0.6729999780654907
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Cover/NT_Cover_Square.fbx",
+      "glb": "GLB/NT_Cover_Square.glb"
+    },
+    {
+      "name": "NT_Cover_Rect_Cyan",
+      "category": "Cover",
+      "triangles": 220,
+      "vertices": 120,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -1.1749999523162842,
+        -0.44449999928474426,
+        0.0
+      ],
+      "bounds_max": [
+        1.1749999523162842,
+        0.44449999928474426,
+        0.703000009059906
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Cover/NT_Cover_Rect_Cyan.fbx",
+      "glb": "GLB/NT_Cover_Rect_Cyan.glb"
+    },
+    {
+      "name": "NT_Cover_Rect_Magenta",
+      "category": "Cover",
+      "triangles": 220,
+      "vertices": 120,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -1.1749999523162842,
+        -0.44449999928474426,
+        0.0
+      ],
+      "bounds_max": [
+        1.1749999523162842,
+        0.44449999928474426,
+        0.703000009059906
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Cover/NT_Cover_Rect_Magenta.fbx",
+      "glb": "GLB/NT_Cover_Rect_Magenta.glb"
+    },
+    {
+      "name": "NT_Reflector_Cyan",
+      "category": "Reflectors",
+      "triangles": 572,
+      "vertices": 312,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -1.100000023841858,
+        -0.2750000059604645,
+        0.0
+      ],
+      "bounds_max": [
+        1.100000023841858,
+        0.2750000059604645,
+        1.3600000143051147
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Reflectors/NT_Reflector_Cyan.fbx",
+      "glb": "GLB/NT_Reflector_Cyan.glb"
+    },
+    {
+      "name": "NT_Reflector_Magenta",
+      "category": "Reflectors",
+      "triangles": 572,
+      "vertices": 312,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -1.100000023841858,
+        -0.2750000059604645,
+        0.0
+      ],
+      "bounds_max": [
+        1.100000023841858,
+        0.2750000059604645,
+        1.3600000143051147
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Reflectors/NT_Reflector_Magenta.fbx",
+      "glb": "GLB/NT_Reflector_Magenta.glb"
+    },
+    {
+      "name": "NT_Reflector_Rotating",
+      "category": "Reflectors",
+      "triangles": 1180,
+      "vertices": 680,
+      "mesh_objects": 2,
+      "bounds_min": [
+        -1.100000023841858,
+        -0.5600000023841858,
+        0.0
+      ],
+      "bounds_max": [
+        1.100000023841858,
+        0.5600000023841858,
+        1.6499998569488525
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [
+        "NT_Reflector_Rotating__ReflectorPivot"
+      ],
+      "fbx": "Models/Reflectors/NT_Reflector_Rotating.fbx",
+      "glb": "GLB/NT_Reflector_Rotating.glb"
+    },
+    {
+      "name": "NT_Bollard",
+      "category": "Cover",
+      "triangles": 132,
+      "vertices": 72,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.37700000405311584,
+        -0.36000001430511475,
+        0.0
+      ],
+      "bounds_max": [
+        0.37700000405311584,
+        0.36000001430511475,
+        0.7200000286102295
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Cover/NT_Bollard.fbx",
+      "glb": "GLB/NT_Bollard.glb"
+    },
+    {
+      "name": "NT_Pickup_Repair",
+      "category": "Pickups",
+      "triangles": 328,
+      "vertices": 176,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.5,
+        -0.515500009059906,
+        0.04499998688697815
+      ],
+      "bounds_max": [
+        0.5,
+        0.515500009059906,
+        0.3395000100135803
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Pickups/NT_Pickup_Repair.fbx",
+      "glb": "GLB/NT_Pickup_Repair.glb"
+    },
+    {
+      "name": "NT_Pickup_Shield",
+      "category": "Pickups",
+      "triangles": 264,
+      "vertices": 142,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.5,
+        -0.515500009059906,
+        0.04499998688697815
+      ],
+      "bounds_max": [
+        0.5,
+        0.515500009059906,
+        0.35100001096725464
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Pickups/NT_Pickup_Shield.fbx",
+      "glb": "GLB/NT_Pickup_Shield.glb"
+    },
+    {
+      "name": "NT_Pickup_Ammo",
+      "category": "Pickups",
+      "triangles": 288,
+      "vertices": 158,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.5,
+        -0.515500009059906,
+        0.04499998688697815
+      ],
+      "bounds_max": [
+        0.5,
+        0.515500009059906,
+        0.35100001096725464
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Pickups/NT_Pickup_Ammo.fbx",
+      "glb": "GLB/NT_Pickup_Ammo.glb"
+    },
+    {
+      "name": "NT_Pickup_Speed",
+      "category": "Pickups",
+      "triangles": 264,
+      "vertices": 142,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.5,
+        -0.515500009059906,
+        0.04499998688697815
+      ],
+      "bounds_max": [
+        0.5,
+        0.515500009059906,
+        0.35100001096725464
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Pickups/NT_Pickup_Speed.fbx",
+      "glb": "GLB/NT_Pickup_Speed.glb"
+    },
+    {
+      "name": "NT_Pickup_Damage",
+      "category": "Pickups",
+      "triangles": 300,
+      "vertices": 160,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.5,
+        -0.515500009059906,
+        0.04499998688697815
+      ],
+      "bounds_max": [
+        0.5,
+        0.515500009059906,
+        0.35100001096725464
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Pickups/NT_Pickup_Damage.fbx",
+      "glb": "GLB/NT_Pickup_Damage.glb"
+    },
+    {
+      "name": "NT_Pickup_RapidFire",
+      "category": "Pickups",
+      "triangles": 280,
+      "vertices": 152,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.5,
+        -0.515500009059906,
+        0.04499998688697815
+      ],
+      "bounds_max": [
+        0.5,
+        0.515500009059906,
+        0.35100001096725464
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Pickups/NT_Pickup_RapidFire.fbx",
+      "glb": "GLB/NT_Pickup_RapidFire.glb"
+    },
+    {
+      "name": "NT_EnergyBolt_Cyan",
+      "category": "Projectiles",
+      "triangles": 276,
+      "vertices": 144,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.10000000149011612,
+        -0.257500022649765,
+        -3.605024545549895e-08
+      ],
+      "bounds_max": [
+        0.10000000149011612,
+        0.2574999928474426,
+        0.20000003278255463
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Projectiles/NT_EnergyBolt_Cyan.fbx",
+      "glb": "GLB/NT_EnergyBolt_Cyan.glb"
+    },
+    {
+      "name": "NT_Mine_Cyan",
+      "category": "Pickups",
+      "triangles": 784,
+      "vertices": 448,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.47999998927116394,
+        -0.47999998927116394,
+        0.009999990463256836
+      ],
+      "bounds_max": [
+        0.47999998927116394,
+        0.47999998927116394,
+        0.3050000071525574
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Pickups/NT_Mine_Cyan.fbx",
+      "glb": "GLB/NT_Mine_Cyan.glb"
+    },
+    {
+      "name": "NT_EnergyBolt_Magenta",
+      "category": "Projectiles",
+      "triangles": 276,
+      "vertices": 144,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.10000000149011612,
+        -0.257500022649765,
+        -3.605024545549895e-08
+      ],
+      "bounds_max": [
+        0.10000000149011612,
+        0.2574999928474426,
+        0.20000003278255463
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Projectiles/NT_EnergyBolt_Magenta.fbx",
+      "glb": "GLB/NT_EnergyBolt_Magenta.glb"
+    },
+    {
+      "name": "NT_Mine_Magenta",
+      "category": "Pickups",
+      "triangles": 784,
+      "vertices": 448,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.47999998927116394,
+        -0.47999998927116394,
+        0.009999990463256836
+      ],
+      "bounds_max": [
+        0.47999998927116394,
+        0.47999998927116394,
+        0.3050000071525574
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Pickups/NT_Mine_Magenta.fbx",
+      "glb": "GLB/NT_Mine_Magenta.glb"
+    },
+    {
+      "name": "NT_EnergyCoin",
+      "category": "Pickups",
+      "triangles": 376,
+      "vertices": 192,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.38999998569488525,
+        -0.38999998569488525,
+        0.02499999850988388
+      ],
+      "bounds_max": [
+        0.38999998569488525,
+        0.38999998569488525,
+        0.15000000596046448
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Pickups/NT_EnergyCoin.fbx",
+      "glb": "GLB/NT_EnergyCoin.glb"
+    },
+    {
+      "name": "NT_EnergyCrystal",
+      "category": "Pickups",
+      "triangles": 114,
+      "vertices": 61,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.3323463201522827,
+        -0.3323463201522827,
+        0.0
+      ],
+      "bounds_max": [
+        0.3323463201522827,
+        0.3323463201522827,
+        1.0299999713897705
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Pickups/NT_EnergyCrystal.fbx",
+      "glb": "GLB/NT_EnergyCrystal.glb"
+    },
+    {
+      "name": "NT_SpawnRing_Cyan",
+      "category": "EffectMeshes",
+      "triangles": 672,
+      "vertices": 448,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -1.1924999952316284,
+        -1.1924999952316284,
+        0.012000000104308128
+      ],
+      "bounds_max": [
+        1.1924999952316284,
+        1.1924999952316284,
+        0.02800000086426735
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/EffectMeshes/NT_SpawnRing_Cyan.fbx",
+      "glb": "GLB/NT_SpawnRing_Cyan.glb"
+    },
+    {
+      "name": "NT_ShieldDome_Cyan",
+      "category": "EffectMeshes",
+      "triangles": 840,
+      "vertices": 529,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -1.2934999465942383,
+        -1.2934999465942383,
+        0.0
+      ],
+      "bounds_max": [
+        1.2934999465942383,
+        1.2934999465942383,
+        1.2799999713897705
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/EffectMeshes/NT_ShieldDome_Cyan.fbx",
+      "glb": "GLB/NT_ShieldDome_Cyan.glb"
+    },
+    {
+      "name": "NT_SpawnRing_Magenta",
+      "category": "EffectMeshes",
+      "triangles": 672,
+      "vertices": 448,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -1.1924999952316284,
+        -1.1924999952316284,
+        0.012000000104308128
+      ],
+      "bounds_max": [
+        1.1924999952316284,
+        1.1924999952316284,
+        0.02800000086426735
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/EffectMeshes/NT_SpawnRing_Magenta.fbx",
+      "glb": "GLB/NT_SpawnRing_Magenta.glb"
+    },
+    {
+      "name": "NT_ShieldDome_Magenta",
+      "category": "EffectMeshes",
+      "triangles": 840,
+      "vertices": 529,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -1.2934999465942383,
+        -1.2934999465942383,
+        0.0
+      ],
+      "bounds_max": [
+        1.2934999465942383,
+        1.2934999465942383,
+        1.2799999713897705
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/EffectMeshes/NT_ShieldDome_Magenta.fbx",
+      "glb": "GLB/NT_ShieldDome_Magenta.glb"
+    },
+    {
+      "name": "NT_Backdrop_Block_Cyan",
+      "category": "Backdrop",
+      "triangles": 1736,
+      "vertices": 944,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.8999999761581421,
+        -0.9185000061988831,
+        0.0
+      ],
+      "bounds_max": [
+        0.9185000061988831,
+        0.8999999761581421,
+        3.2850000858306885
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Backdrop/NT_Backdrop_Block_Cyan.fbx",
+      "glb": "GLB/NT_Backdrop_Block_Cyan.glb"
+    },
+    {
+      "name": "NT_Backdrop_Block_Magenta",
+      "category": "Backdrop",
+      "triangles": 1736,
+      "vertices": 944,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.8999999761581421,
+        -0.9185000061988831,
+        0.0
+      ],
+      "bounds_max": [
+        0.9185000061988831,
+        0.8999999761581421,
+        3.2850000858306885
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Backdrop/NT_Backdrop_Block_Magenta.fbx",
+      "glb": "GLB/NT_Backdrop_Block_Magenta.glb"
+    },
+    {
+      "name": "NT_Backdrop_Block_Violet",
+      "category": "Backdrop",
+      "triangles": 1736,
+      "vertices": 944,
+      "mesh_objects": 1,
+      "bounds_min": [
+        -0.8999999761581421,
+        -0.9185000061988831,
+        0.0
+      ],
+      "bounds_max": [
+        0.9185000061988831,
+        0.8999999761581421,
+        3.2850000858306885
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [],
+      "fbx": "Models/Backdrop/NT_Backdrop_Block_Violet.fbx",
+      "glb": "GLB/NT_Backdrop_Block_Violet.glb"
+    }
+  ]
+}

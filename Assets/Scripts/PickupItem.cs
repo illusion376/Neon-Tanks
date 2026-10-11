@@ -1,0 +1,284 @@
+using UnityEngine;
+
+namespace DemoRicochet
+{
+    public enum PickupType
+    {
+        Repair = 0,     // Аптечка: +1 HP (или +1 щит, если здоровье полное)
+        Shield = 1,     // Энергетический щит вокруг танка
+        Speed = 2,      // Ускорение движения на 6 сек
+        RapidFire = 3   // Тройной веерный залп и быстрая перезарядка на 6 сек
+    }
+
+    /// <summary>
+    /// Шаг 7: Универсальный скрипт для всех бонусов и хилок на полу арены.
+    /// Использует дизайнерские 3D-модели Pickups/NT_Pickup_* с неоновым свечением,
+    /// пульсирующим кольцом на полу, плавной левитацией и автоматическим респавном.
+    /// </summary>
+    public class PickupItem : MonoBehaviour
+    {
+        [Header("Параметры бонуса")]
+        public PickupType pickupType = PickupType.Repair;
+        public float respawnDelay = 8.0f;
+        public float pickupRadius = 0.95f;
+        public bool cycleTypeOnRespawn = false;
+
+        private Transform _modelTransform;
+        private Transform _haloTransform;
+        private Transform _glowTransform;
+        private Material _haloMat;
+        private Material _glowMat;
+        private MaterialPropertyBlock _emissionBlock;
+
+        private bool _isCollected;
+        private float _respawnTimer;
+        private float _phaseOffset;
+
+        private static readonly int _emissionId = Shader.PropertyToID("_EmissionColor");
+        private static readonly int _colorId = Shader.PropertyToID("_Color");
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void AutoSpawnArenaPickups()
+        {
+            if (FindAnyObjectByType<PickupItem>() != null) return;
+
+            SpawnPickup("Pickup_Repair", PickupType.Repair, new Vector3(-4.2f, 0f, 2.1f));
+            SpawnPickup("Pickup_Shield", PickupType.Shield, new Vector3(4.2f, 0f, -2.1f));
+            SpawnPickup("Pickup_Speed", PickupType.Speed, new Vector3(0f, 0f, 3.85f));
+            SpawnPickup("Pickup_RapidFire", PickupType.RapidFire, new Vector3(0f, 0f, -3.85f));
+        }
+
+        public static PickupItem SpawnPickup(string name, PickupType type, Vector3 position)
+        {
+            GameObject go = new GameObject(name);
+            go.transform.position = new Vector3(position.x, 0f, position.z);
+            PickupItem item = go.AddComponent<PickupItem>();
+            item.Initialize(type);
+            return item;
+        }
+
+        public void Initialize(PickupType type)
+        {
+            pickupType = type;
+            _phaseOffset = Random.Range(0f, Mathf.PI * 2f);
+            RebuildVisuals();
+        }
+
+        private void Start()
+        {
+            if (_modelTransform == null)
+            {
+                _phaseOffset = Random.Range(0f, Mathf.PI * 2f);
+                RebuildVisuals();
+            }
+        }
+
+        private void RebuildVisuals()
+        {
+            NeonVisuals.EnsureInitialized();
+
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                Destroy(transform.GetChild(i).gameObject);
+            }
+
+            Color accent = GetPickupColor(pickupType);
+            string modelPath = GetModelPath(pickupType);
+
+            GameObject modelObj = NeonVisuals.InstantiateModel(modelPath, transform, "PickupMesh");
+            if (modelObj != null)
+            {
+                _modelTransform = modelObj.transform;
+                _modelTransform.localScale = Vector3.one * 0.68f;
+                _modelTransform.localPosition = new Vector3(0f, 0.17f, 0f);
+                ApplyNeonAccent(_modelTransform, accent, 7.0f);
+            }
+
+            Shader groundShader = NeonVisuals.GroundShader;
+            if (groundShader != null)
+            {
+                // Пунктирное кольцо вокруг бонуса (как в ArenaView.Gameplay.cs)
+                _haloMat = new Material(groundShader) { name = "PickupHaloMat" };
+                _haloMat.SetFloat("_Mode", 1f);
+                _haloMat.SetVector(_colorId, accent.linear * 1.8f);
+
+                GameObject haloQuad = NeonVisuals.CreateEffectQuad("UpgradeRing", transform, _haloMat);
+                _haloTransform = haloQuad.transform;
+                _haloTransform.localPosition = new Vector3(0f, 0.025f, 0f);
+                _haloTransform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                _haloTransform.localScale = new Vector3(1.25f, 1.25f, 1f);
+
+                // Мягкое световое пятно на полу под бонусом
+                _glowMat = new Material(groundShader) { name = "PickupGlowMat" };
+                _glowMat.SetFloat("_Mode", 0f);
+                _glowMat.SetVector(_colorId, accent.linear * 1.15f);
+
+                GameObject glowQuad = NeonVisuals.CreateEffectQuad("UpgradeFloorSpill", transform, _glowMat);
+                _glowTransform = glowQuad.transform;
+                _glowTransform.localPosition = new Vector3(0f, 0.020f, 0f);
+                _glowTransform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                _glowTransform.localScale = new Vector3(2.2f, 2.2f, 1f);
+            }
+        }
+
+        private void Update()
+        {
+            float dt = Time.deltaTime;
+
+            if (_isCollected)
+            {
+                _respawnTimer -= dt;
+                if (_respawnTimer <= 0f)
+                {
+                    RespawnPickup();
+                }
+                return;
+            }
+
+            // Плавная левитация и вращение 3D-модели бонуса (параметры из ArenaView.Gameplay.cs)
+            float t = Time.time;
+            if (_modelTransform != null)
+            {
+                float hoverY = 0.17f + Mathf.Sin(t * 2.6f + _phaseOffset) * 0.055f;
+                _modelTransform.localPosition = new Vector3(0f, hoverY, 0f);
+                _modelTransform.localRotation = Quaternion.Euler(0f, t * 38f + _phaseOffset * 25f, 0f);
+            }
+
+            if (_haloTransform != null)
+            {
+                _haloTransform.localRotation = Quaternion.Euler(90f, -t * 24f, 0f);
+            }
+
+            CheckTankCollection();
+        }
+
+        private void CheckTankCollection()
+        {
+            TankHealth[] tanks = FindObjectsByType<TankHealth>();
+            float rSqr = pickupRadius * pickupRadius;
+            Vector3 myPos = transform.position;
+
+            for (int i = 0; i < tanks.Length; i++)
+            {
+                TankHealth tank = tanks[i];
+                if (tank == null || tank.IsDead) continue;
+
+                float dx = tank.transform.position.x - myPos.x;
+                float dz = tank.transform.position.z - myPos.z;
+                if (dx * dx + dz * dz <= rSqr)
+                {
+                    CollectBy(tank);
+                    break;
+                }
+            }
+        }
+
+        private void CollectBy(TankHealth tank)
+        {
+            switch (pickupType)
+            {
+                case PickupType.Repair:
+                    if (!tank.Heal(1))
+                    {
+                        tank.AddShield(1);
+                    }
+                    break;
+
+                case PickupType.Shield:
+                    tank.AddShield(1);
+                    break;
+
+                case PickupType.Speed:
+                    tank.ActivateSpeedBoost(6.0f);
+                    break;
+
+                case PickupType.RapidFire:
+                    tank.ActivateRapidFire(6.0f);
+                    break;
+            }
+
+            Color burstColor = GetPickupColor(pickupType);
+            TankHealth.SpawnRingBurst(transform.position, burstColor, 2.2f);
+
+            _isCollected = true;
+            _respawnTimer = respawnDelay;
+            SetVisualsActive(false);
+        }
+
+        private void RespawnPickup()
+        {
+            _isCollected = false;
+
+            if (cycleTypeOnRespawn)
+            {
+                pickupType = (PickupType)(((int)pickupType + 1) % 4);
+                RebuildVisuals();
+            }
+            else
+            {
+                SetVisualsActive(true);
+            }
+
+            TankHealth.SpawnRingBurst(transform.position, GetPickupColor(pickupType), 1.65f);
+        }
+
+        private void SetVisualsActive(bool active)
+        {
+            for (int i = 0; i < transform.childCount; i++)
+            {
+                transform.GetChild(i).gameObject.SetActive(active);
+            }
+        }
+
+        private void ApplyNeonAccent(Transform modelRoot, Color accent, float intensity)
+        {
+            if (_emissionBlock == null) _emissionBlock = new MaterialPropertyBlock();
+
+            Color linear = accent.linear;
+            Vector4 litEmission = new Vector4(linear.r * intensity, linear.g * intensity, linear.b * intensity, 1f);
+
+            Renderer[] renderers = modelRoot.GetComponentsInChildren<Renderer>(true);
+            for (int r = 0; r < renderers.Length; r++)
+            {
+                Renderer rend = renderers[r];
+                Material[] shared = rend.sharedMaterials;
+                for (int i = 0; i < shared.Length; i++)
+                {
+                    if (shared[i] == null || !shared[i].HasProperty(_emissionId)) continue;
+                    Vector4 baseEm = shared[i].GetVector(_emissionId);
+                    bool isNeonSlot = Mathf.Max(baseEm.x, Mathf.Max(baseEm.y, baseEm.z)) > 1.0f;
+                    if (isNeonSlot)
+                    {
+                        rend.GetPropertyBlock(_emissionBlock, i);
+                        _emissionBlock.SetVector(_emissionId, litEmission);
+                        rend.SetPropertyBlock(_emissionBlock, i);
+                    }
+                }
+            }
+        }
+
+        private static string GetModelPath(PickupType type)
+        {
+            switch (type)
+            {
+                case PickupType.Repair: return "Pickups/NT_Pickup_Repair";
+                case PickupType.Shield: return "Pickups/NT_Pickup_Shield";
+                case PickupType.Speed: return "Pickups/NT_Pickup_Speed";
+                case PickupType.RapidFire: return "Pickups/NT_Pickup_RapidFire";
+                default: return "Pickups/NT_Pickup_Repair";
+            }
+        }
+
+        private static Color GetPickupColor(PickupType type)
+        {
+            switch (type)
+            {
+                case PickupType.Repair: return new Color(0.18f, 1.0f, 0.52f);     // Изумрудно-неоновый (хилка)
+                case PickupType.Shield: return new Color(0.015f, 0.78f, 1.0f);    // Голубой неон (щит)
+                case PickupType.Speed: return new Color(0.18f, 1.0f, 0.80f);      // Бирюзовая мята (скорость)
+                case PickupType.RapidFire: return new Color(1.0f, 0.76f, 0.12f);  // Золотой неон (тройной залп)
+                default: return Color.white;
+            }
+        }
+    }
+}

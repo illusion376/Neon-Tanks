@@ -34,7 +34,7 @@ namespace DemoRicochet
         private void Awake()
         {
             // Гарантируем, что на сцене только один предиктор (чтобы старый дубликат не рисовал поверх)
-            RicochetAimLine[] allLines = FindObjectsByType<RicochetAimLine>(FindObjectsSortMode.None);
+            RicochetAimLine[] allLines = FindObjectsByType<RicochetAimLine>();
             for (int i = 0; i < allLines.Length; i++)
             {
                 if (allLines[i] != this && allLines[i].GetComponent<SimpleBoxTank>() == null)
@@ -47,37 +47,54 @@ namespace DemoRicochet
             if (_tank != null)
             {
                 _tankCollider = _tank.GetComponent<Collider>();
+                _tankHealth = _tank.GetComponent<TankHealth>();
             }
 
             SetupLineRenderer();
         }
+
+        private TankHealth _tankHealth;
 
         private void SetupLineRenderer()
         {
             _line = GetComponent<LineRenderer>();
             _line.useWorldSpace = true;
             _line.startWidth = 0.08f;
-            _line.endWidth = 0.05f;
+            _line.endWidth = 0.045f;
             _line.numCapVertices = 4;
             _line.numCornerVertices = 4;
             _line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             _line.receiveShadows = false;
 
-            Color aimColor = new Color(0.25f, 0.95f, 1.0f, 0.9f);
-            Shader lineShader = Shader.Find("Sprites/Default") ?? Shader.Find("Universal Render Pipeline/Unlit");
-            if (lineShader != null)
+            Color aimColor = new Color(0.18f, 0.96f, 1.0f, 1.0f);
+            Shader groundShader = Resources.Load<Shader>("Shaders/NeonGround") ?? Shader.Find("Hidden/NeonTanks/Ground");
+            if (groundShader != null)
             {
-                Material mat = new Material(lineShader);
-                mat.color = aimColor;
-                if (mat.HasProperty("_BaseColor"))
-                {
-                    mat.SetColor("_BaseColor", aimColor);
-                }
+                Material mat = new Material(groundShader);
+                mat.SetColor("_Color", aimColor);
+                mat.SetColor("_SecondaryColor", Color.white);
+                mat.SetFloat("_Glow", 1.85f);
+                mat.SetFloat("_Alpha", 0.52f);
+                mat.SetFloat("_Mode", 3f);
                 _line.material = mat;
             }
+            else
+            {
+                Shader lineShader = Shader.Find("Sprites/Default") ?? Shader.Find("Universal Render Pipeline/Unlit");
+                if (lineShader != null)
+                {
+                    Material mat = new Material(lineShader);
+                    mat.color = aimColor;
+                    if (mat.HasProperty("_BaseColor"))
+                    {
+                        mat.SetColor("_BaseColor", aimColor);
+                    }
+                    _line.material = mat;
+                }
+            }
 
-            _line.startColor = aimColor;
-            _line.endColor = new Color(0.25f, 0.95f, 1.0f, 0.35f);
+            _line.startColor = new Color(0.25f, 0.95f, 1.0f, 0.88f);
+            _line.endColor = new Color(0.25f, 0.95f, 1.0f, 0.28f);
         }
 
         private void LateUpdate()
@@ -87,6 +104,17 @@ namespace DemoRicochet
                 _tank = GetComponentInParent<SimpleBoxTank>() ?? FindAnyObjectByType<SimpleBoxTank>();
                 if (_tank == null) return;
                 _tankCollider = _tank.GetComponent<Collider>();
+                _tankHealth = _tank.GetComponent<TankHealth>();
+            }
+            else if (_tankHealth == null)
+            {
+                _tankHealth = _tank.GetComponent<TankHealth>();
+            }
+
+            if (_tankHealth != null && _tankHealth.IsDead)
+            {
+                _line.positionCount = 0;
+                return;
             }
 
             DrawPredictedPath();
@@ -97,6 +125,7 @@ namespace DemoRicochet
             const float skinOffset = 0.01f;
 
             Vector3 origin = _tank.GetFireOrigin();
+            origin.y = SimpleBoxTank.ProjectileHeight;
             Vector3 direction = _tank.AimDirection;
             direction.y = 0f;
             if (direction.sqrMagnitude < 0.0001f)
@@ -124,11 +153,14 @@ namespace DemoRicochet
                 if (TrySimulateHit(origin, direction, castDistance, bounce, lastBouncedWall, out RaycastHit hit))
                 {
                     Vector3 hitCenter = origin + direction * hit.distance;
+                    hitCenter.y = SimpleBoxTank.ProjectileHeight;
                     _points.Add(hitCenter);
 
                     remainingTotalLength -= hit.distance;
 
-                    if (hit.collider.GetComponentInParent<SimpleBoxTank>() != null || bounce == maxReflections)
+                    bool hitAnyTank = hit.collider.GetComponentInParent<TankHealth>() != null
+                                      || hit.collider.GetComponentInParent<SimpleBoxTank>() != null;
+                    if (hitAnyTank || bounce == maxReflections)
                     {
                         break;
                     }
@@ -146,12 +178,14 @@ namespace DemoRicochet
 
                     direction = Vector3.Reflect(direction, normal).normalized;
                     origin = hitCenter + normal * skinOffset;
+                    origin.y = SimpleBoxTank.ProjectileHeight;
                     lastBouncedWall = hit.collider;
                 }
                 else
                 {
-
-                    _points.Add(origin + direction * castDistance);
+                    Vector3 endPoint = origin + direction * castDistance;
+                    endPoint.y = SimpleBoxTank.ProjectileHeight;
+                    _points.Add(endPoint);
                     break;
                 }
             }
@@ -194,7 +228,9 @@ namespace DemoRicochet
 
                 if (h.distance <= 0.0001f && h.point == Vector3.zero)
                 {
-                    if (currentBounce > 0 && h.collider.GetComponentInParent<SimpleBoxTank>() != null)
+                    bool isTank = h.collider.GetComponentInParent<TankHealth>() != null
+                                  || h.collider.GetComponentInParent<SimpleBoxTank>() != null;
+                    if (currentBounce > 0 && isTank)
                     {
                         Vector3 toTank = h.collider.bounds.center - origin;
                         toTank.y = 0f;
