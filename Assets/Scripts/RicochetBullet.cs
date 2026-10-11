@@ -237,6 +237,7 @@ namespace DemoRicochet
                     {
                         transform.position = hitCenter;
                         SpawnFlashEffect(hitCenter, GetTeamColor(), 0.9f);
+                        NeonAudio.Fizzle(hitCenter);
                         Destroy(gameObject);
                         return;
                     }
@@ -253,6 +254,13 @@ namespace DemoRicochet
                     _bounceCount++;
                     _lastBouncedWall = hit.collider;
                     _distSinceLastBounce = 0f;
+
+                    // Звук отскока. От разрушаемого блока звучит его треск (в SpecialObstacle), рикошет не дублируем
+                    if (specialObs == null || specialObs.mode != ObstacleMode.Destructible)
+                    {
+                        bool isMirror = specialObs != null && specialObs.mode == ObstacleMode.Reflective;
+                        NeonAudio.Ricochet(_bounceCount, isMirror, hitCenter);
+                    }
 
                     SpawnFlashEffect(hitCenter, GetTeamColor(), 0.75f);
 

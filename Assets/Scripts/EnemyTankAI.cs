@@ -93,6 +93,15 @@ namespace DemoRicochet
         private void Start()
         {
             PickNewWaypoint();
+
+            // Звук: гул двигателя только у ездящих врагов (турели стоят на месте)
+            if (moveSpeed > 0f)
+            {
+                NeonEngineSound engine = gameObject.AddComponent<NeonEngineSound>();
+                engine.clipName = "sfx_enemy_move_loop";
+                engine.maxVolume = 0.16f;
+                engine.fullSpeed = moveSpeed;
+            }
         }
 
         private void BuildEnemyVisuals()
@@ -534,6 +543,9 @@ namespace DemoRicochet
                 RicochetBullet.Spawn(RicochetBullet.ComputeSafeFireOrigin(transform.position, leftDir, _muzzlePoint, _myCollider), leftDir, _myCollider, false);
                 RicochetBullet.Spawn(RicochetBullet.ComputeSafeFireOrigin(transform.position, rightDir, _muzzlePoint, _myCollider), rightDir, _myCollider, false);
             }
+
+            // Звук: ездящий танк, турель или турель с рикошетом звучат по-разному
+            NeonAudio.ShootEnemy(moveSpeed <= 0f, useRicochetShots, spawnPos);
         }
 
         private void UpdateVisualRig(float dt)
