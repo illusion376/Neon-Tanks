@@ -3,7 +3,7 @@ Shader "NeonRicochet/NeonGround"
     Properties
     {
         [HDR] _Color ("Tint", Color) = (0,1,1,1)
-        _Mode ("0 glow / 1 ring / 2 solid / 3 beam / 4 spark / 5 shadow / 6 dashed beam", Float) = 0
+        _Mode ("0 glow / 1 ring / 2 solid / 3 beam / 4 spark / 5 shadow / 6 dashed beam / 7 shockwave", Float) = 0
         _DashFill ("Dashed beam fill", Range(0, 1)) = 0.65
         [Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend ("Source blend", Float) = 5
         [Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Destination blend", Float) = 1
@@ -51,7 +51,7 @@ Shader "NeonRicochet/NeonGround"
                     a=exp2(-radius*radius*4)*(1-smoothstep(.65,1,radius));
                     return half4(0,0,0,a*saturate(_Color.a*i.color.a));
                 }
-                else
+                else if(_Mode<6.5)
                 {
                     // LineRenderer Tile UV: one repeat = one dash and one gap.
                     // Render both the sharp inner core (|p.y| < 1/3) and soft outer halo (|p.y| < 1) from the same UV.
@@ -61,6 +61,14 @@ Shader "NeonRicochet/NeonGround"
                     float coreY=pow(saturate(1-abs(p.y)*3.0),1.5);
                     float glowY=pow(saturate(1-abs(p.y)),1.6);
                     a=saturate(coreDash*coreY+glowDash*glowY*0.16);
+                }
+                else
+                {
+                    // Continuous expanding ring for tank explosions.
+                    float edge=abs(radius-.84);
+                    float core=1-smoothstep(.018,.055,edge);
+                    float glow=(1-smoothstep(.055,.20,edge))*.25;
+                    a=saturate(core+glow);
                 }
                 return half4(_Color.rgb*i.color.rgb,a*saturate(_Color.a*i.color.a));
             }
