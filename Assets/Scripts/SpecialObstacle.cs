@@ -45,6 +45,7 @@ namespace DemoRicochet
         private Transform _pylonsRoot;
         private bool _isGateOpen;
         private float _gateTimer;
+        private float _gateWarnTimer;
 
         private struct NeonSlot
         {
@@ -295,6 +296,22 @@ namespace DemoRicochet
             }
 
             float gateIntensity = _isGateOpen ? 2.2f : 8.0f;
+
+            // Звук: тики, пока ворота мигают перед закрытием
+            if (waitingToClose)
+            {
+                _gateWarnTimer -= dt;
+                if (_gateWarnTimer <= 0f)
+                {
+                    _gateWarnTimer = 0.2f;
+                    NeonAudio.GateWarning(transform.position);
+                }
+            }
+            else
+            {
+                _gateWarnTimer = 0f;
+            }
+
             if (waitingToClose)
             {
                 gateIntensity = 4.0f + 4.5f * Mathf.Abs(Mathf.Sin(Time.time * 10f));
@@ -331,6 +348,7 @@ namespace DemoRicochet
             }
 
             TankHealth.SpawnRingBurst(transform.position, GateTint, 1.8f);
+            NeonAudio.GateToggle(open, transform.position);
         }
 
         public void OnBulletBounce(RicochetBullet bullet, Vector3 hitPoint)
@@ -352,6 +370,10 @@ namespace DemoRicochet
                 if (currentHealth <= 0)
                 {
                     ShatterDestructible();
+                }
+                else
+                {
+                    NeonAudio.BlockCrack(currentHealth, maxHealth, hitPoint);
                 }
             }
         }
@@ -397,6 +419,7 @@ namespace DemoRicochet
 
             RefreshDestructibleState();
             TankHealth.SpawnRingBurst(transform.position, BreakableTint, 2.8f);
+            NeonAudio.BlockShatter(transform.position);
         }
 
         private void RebuildDestructible()
@@ -418,6 +441,7 @@ namespace DemoRicochet
             RefreshDestructibleState();
             ApplySurfaceTint(1.5f, 8.0f);
             TankHealth.SpawnRingBurst(transform.position, BreakableTint, 2.1f);
+            NeonAudio.BlockRebuild(transform.position);
         }
 
         private void CacheSlots(Transform root, List<NeonSlot> targetList)

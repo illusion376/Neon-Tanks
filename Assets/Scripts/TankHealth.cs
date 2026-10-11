@@ -36,6 +36,7 @@ namespace DemoRicochet
         public bool HasRapidFire => rapidFireTimer > 0f;
 
         private Vector3 _spawnPosition;
+        private bool _isPlayer;
         private bool _isDead;
         private float _respawnTimer;
         private float _protectionTimer;
@@ -63,6 +64,7 @@ namespace DemoRicochet
             _tankRb = GetComponent<Rigidbody>();
 
             SimpleBoxTank playerTank = GetComponent<SimpleBoxTank>();
+            _isPlayer = playerTank != null;
             if (playerTank != null)
             {
                 isCyanTeam = playerTank.isCyanTeam;
@@ -189,11 +191,13 @@ namespace DemoRicochet
             if (speedBoostTimer > 0f)
             {
                 speedBoostTimer = Mathf.Max(0f, speedBoostTimer - dt);
+                if (speedBoostTimer <= 0f && _isPlayer) NeonAudio.BuffEnded(true);
             }
 
             if (rapidFireTimer > 0f)
             {
                 rapidFireTimer = Mathf.Max(0f, rapidFireTimer - dt);
+                if (rapidFireTimer <= 0f && _isPlayer) NeonAudio.BuffEnded(false);
             }
 
             if (_speedIconGroup != null && _speedIconGroup.activeSelf != (speedBoostTimer > 0f))
@@ -252,12 +256,14 @@ namespace DemoRicochet
             if (isCyanTeam && LevelDefinition.IsInSafeZone(transform.position))
             {
                 _hitFlashTimer = 0.14f;
+                NeonAudio.ProtectDeflect(transform.position);
                 return true;
             }
 
             if (_protectionTimer > 0f)
             {
                 _hitFlashTimer = 0.14f;
+                NeonAudio.ProtectDeflect(transform.position);
                 return true;
             }
 
@@ -266,6 +272,7 @@ namespace DemoRicochet
                 shieldCharges--;
                 _hitFlashTimer = 0.14f;
                 SpawnRingBurst(transform.position, new Color(0.015f, 0.78f, 1.0f), 2.1f);
+                NeonAudio.ShieldBlock(transform.position);
                 return true;
             }
 
@@ -276,6 +283,10 @@ namespace DemoRicochet
             if (currentHealth <= 0)
             {
                 Die();
+            }
+            else
+            {
+                NeonAudio.TankHit(_isPlayer, currentHealth, transform.position);
             }
 
             return true;
@@ -318,6 +329,7 @@ namespace DemoRicochet
             if (_tankRb != null) _tankRb.linearVelocity = Vector3.zero;
 
             SetVisualsVisible(false);
+            NeonAudio.TankExplode(_isPlayer, LevelManager.IsActive && respawnsLeft != 0, transform.position);
             OnTankKilled?.Invoke(isCyanTeam);
         }
 
@@ -344,6 +356,7 @@ namespace DemoRicochet
             RefreshHealthPips();
 
             SpawnRingBurst(transform.position, GetTeamColor(), 2.2f);
+            NeonAudio.Respawn(_isPlayer, transform.position);
         }
 
         private void SetVisualsVisible(bool visible)
