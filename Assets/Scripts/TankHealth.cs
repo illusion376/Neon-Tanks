@@ -312,7 +312,7 @@ namespace DemoRicochet
             rapidFireTimer = 0f;
             ApplyHitFlash(0f);
 
-            TankExplosionEffect.Play(transform.position, GetTeamColor());
+            TankExplosionEffect.Play(transform, GetTeamColor());
 
             if (_tankCollider != null) _tankCollider.enabled = false;
             if (_tankRb != null) _tankRb.linearVelocity = Vector3.zero;

@@ -68,7 +68,8 @@ Shader "NeonRicochet/NeonGround"
                     float edge=abs(radius-.84);
                     float core=1-smoothstep(.018,.055,edge);
                     float glow=(1-smoothstep(.055,.20,edge))*.25;
-                    a=saturate(core+glow);
+                    // Fade out before the quad border, including the outer halo.
+                    a=saturate(core+glow)*(1-smoothstep(.94,1,radius));
                 }
                 return half4(_Color.rgb*i.color.rgb,a*saturate(_Color.a*i.color.a));
             }

@@ -214,7 +214,19 @@ namespace DemoRicochet
 
             if (cycleTypeOnRespawn)
             {
-                pickupType = (PickupType)(((int)pickupType + 1) % 4);
+                switch (pickupType)
+                {
+                    case PickupType.Repair:
+                    case PickupType.Speed:
+                        pickupType = PickupType.RapidFire;
+                        break;
+                    case PickupType.RapidFire:
+                        pickupType = PickupType.Shield;
+                        break;
+                    default:
+                        pickupType = PickupType.Repair;
+                        break;
+                }
                 RebuildVisuals();
             }
             else
