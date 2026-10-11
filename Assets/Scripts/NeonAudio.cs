@@ -25,7 +25,8 @@ namespace DemoRicochet
         [Header("Громкость")]
         [Range(0f, 1f)] public float masterVolume = 1f;
         [Range(0f, 1f)] public float sfxVolume = 0.9f;
-        [Range(0f, 1f)] public float musicVolume = 0.4f;
+        [Tooltip("Громкость фоновой музыки (0.22 ≈ на 5 дБ тише прежних 0.4)")]
+        [Range(0f, 1f)] public float musicVolume = 0.22f;
         [Tooltip("Во сколько раз приглушать музыку на паузе и экране результата")]
         [Range(0f, 1f)] public float musicDuckOnPause = 0.4f;
         [Tooltip("Насколько сильно звук смещается влево/вправо по положению на экране")]
