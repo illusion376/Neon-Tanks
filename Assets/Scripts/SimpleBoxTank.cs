@@ -73,6 +73,10 @@ namespace DemoRicochet
             {
                 gameObject.AddComponent<RicochetAimLine>();
             }
+
+            // Звук: гул двигателя игрока
+            NeonEngineSound engine = gameObject.AddComponent<NeonEngineSound>();
+            engine.fullSpeed = moveSpeed;
         }
 
         private void BuildNeonTankVisuals()
@@ -374,6 +378,9 @@ namespace DemoRicochet
                 RicochetBullet.Spawn(GetFireOrigin(leftDir), leftDir, myCollider, isCyanTeam);
                 RicochetBullet.Spawn(GetFireOrigin(rightDir), rightDir, myCollider, isCyanTeam);
             }
+
+            // Звук: один на залп (при тройном выстреле — отдельный звук, а не три обычных)
+            NeonAudio.ShootPlayer(rapid, spawnPos);
         }
 
         public Vector3 GetFireOrigin()

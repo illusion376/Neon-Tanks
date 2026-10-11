@@ -154,6 +154,7 @@ namespace DemoRicochet
             drop.respawnDelay = 0f;
             drop.playerOnly = true;
             _killDropsLeft--;
+            NeonAudio.PickupSpawn(point);
         }
 
         private static bool TryFindDropPoint(Vector3 center, out Vector3 point)

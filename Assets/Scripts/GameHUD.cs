@@ -60,6 +60,10 @@ namespace DemoRicochet
         private GameObject _safeZoneBanner;
         private const float LevelIntroDuration = 5f;
 
+        // Звук: последние показанные числа отсчётов (чтобы тикать один раз на смену цифры)
+        private int _lastRespawnSecond = -1;
+        private int _lastBeepSecond = -1;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoSpawnHUD()
         {
@@ -86,6 +90,11 @@ namespace DemoRicochet
             {
                 _mobileControls = gameObject.AddComponent<MobileControls>();
             }
+        }
+
+        private void Start()
+        {
+            if (LevelManager.IsActive) NeonAudio.LevelStart();
         }
 
         private void OnEnable()
@@ -171,6 +180,15 @@ namespace DemoRicochet
             else if (!_isMatchFinished && !_isPaused)
             {
                 _remainingTime = Mathf.Max(0f, _remainingTime - Time.deltaTime);
+
+                // Звук: бип на каждой из последних 5 секунд матча
+                int secsLeft = Mathf.CeilToInt(_remainingTime);
+                if (secsLeft <= 5 && secsLeft > 0 && secsLeft != _lastBeepSecond)
+                {
+                    _lastBeepSecond = secsLeft;
+                    NeonAudio.TimerBeep(secsLeft);
+                }
+
                 if (_remainingTime <= 0f)
                 {
                     FinishMatch();
@@ -224,12 +242,14 @@ namespace DemoRicochet
 
             if (nextPressed && _isMatchFinished && _levelWon)
             {
+                NeonAudio.UiConfirm();
                 LevelManager.NextLevel();
                 return;
             }
 
             if (restartPressed && (_isMatchFinished || _isPaused))
             {
+                NeonAudio.UiConfirm();
                 RestartMatch();
                 return;
             }
@@ -243,6 +263,7 @@ namespace DemoRicochet
         public void SetPaused(bool paused)
         {
             if (_isMatchFinished) paused = false;
+            if (paused != _isPaused) NeonAudio.Pause(paused);
             _isPaused = paused;
             Time.timeScale = _isPaused ? 0f : 1f;
             if (_gameplayHud != null) _gameplayHud.SetActive(!_isPaused);
@@ -265,6 +286,7 @@ namespace DemoRicochet
 
             bool victory = _cyanScore > _magentaScore;
             bool draw = _cyanScore == _magentaScore;
+            NeonAudio.MatchFinished(victory);
 
             if (_resultOverlay != null) _resultOverlay.SetActive(true);
             if (_resultHeading != null)
@@ -298,6 +320,7 @@ namespace DemoRicochet
             _cyanScore = 0;
             _magentaScore = 0;
             _remainingTime = matchDuration;
+            _lastBeepSecond = -1;
 
             if (_pauseOverlay != null) _pauseOverlay.SetActive(false);
             if (_resultOverlay != null) _resultOverlay.SetActive(false);
@@ -357,6 +380,7 @@ namespace DemoRicochet
             if (_mobileControls != null) _mobileControls.SetInputEnabled(false);
 
             bool campaignDone = victory && LevelManager.IsLastLevel;
+            NeonAudio.LevelFinished(victory, campaignDone);
             if (victory)
             {
                 ShowLevelVictory(campaignDone);
@@ -436,6 +460,17 @@ namespace DemoRicochet
             {
                 int sec = Mathf.Max(1, Mathf.CeilToInt(_playerHealth.RespawnRemaining));
                 _respawnText.text = $"ВОЗВРАЩЕНИЕ В БОЙ  /  {sec}";
+
+                // Звук: тик на каждую смену цифры. Первый тик пропускаем — в этот момент звучит взрыв
+                if (sec != _lastRespawnSecond)
+                {
+                    if (_lastRespawnSecond != -1) NeonAudio.RespawnTick();
+                    _lastRespawnSecond = sec;
+                }
+            }
+            else if (!showRespawn)
+            {
+                _lastRespawnSecond = -1;
             }
         }
 
@@ -799,6 +834,7 @@ namespace DemoRicochet
             Button btn = img.gameObject.AddComponent<Button>();
             btn.targetGraphic = img;
             btn.navigation = new Navigation { mode = Navigation.Mode.None };
+            btn.onClick.AddListener(NeonAudio.UiClick);
             if (onClick != null)
             {
                 btn.onClick.AddListener(onClick);

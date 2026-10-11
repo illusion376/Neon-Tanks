@@ -195,6 +195,7 @@ namespace DemoRicochet
 
             Color burstColor = GetPickupColor(pickupType);
             TankHealth.SpawnRingBurst(transform.position, burstColor, 2.2f);
+            NeonAudio.Pickup(pickupType, tank.GetComponent<SimpleBoxTank>() != null, transform.position);
 
             // respawnDelay <= 0 — одноразовый бонус
             if (respawnDelay <= 0f)
@@ -235,6 +236,7 @@ namespace DemoRicochet
             }
 
             TankHealth.SpawnRingBurst(transform.position, GetPickupColor(pickupType), 1.65f);
+            NeonAudio.PickupSpawn(transform.position);
         }
 
         private void SetVisualsActive(bool active)
