@@ -3,7 +3,8 @@ Shader "NeonRicochet/NeonGround"
     Properties
     {
         [HDR] _Color ("Tint", Color) = (0,1,1,1)
-        _Mode ("0 glow / 1 ring / 2 solid / 3 beam / 4 spark / 5 shadow", Float) = 0
+        _Mode ("0 glow / 1 ring / 2 solid / 3 beam / 4 spark / 5 shadow / 6 dashed beam", Float) = 0
+        _DashFill ("Dashed beam fill", Range(0, 1)) = 0.65
         [Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend ("Source blend", Float) = 5
         [Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Destination blend", Float) = 1
     }
@@ -22,7 +23,7 @@ Shader "NeonRicochet/NeonGround"
             #include "UnityCG.cginc"
             struct appdata { float4 vertex:POSITION; float2 uv:TEXCOORD0; float4 color:COLOR; };
             struct v2f { float4 vertex:SV_POSITION; float2 uv:TEXCOORD0; float4 color:COLOR; };
-            float4 _Color; float _Mode;
+            float4 _Color; float _Mode; float _DashFill;
             v2f vert(appdata v)
             { v2f o; o.vertex=UnityObjectToClipPos(v.vertex); o.uv=v.uv; o.color=v.color; return o; }
             half4 frag(v2f i):SV_Target
@@ -43,12 +44,19 @@ Shader "NeonRicochet/NeonGround"
                     rays+=pow(saturate(1-abs(p.y)*7),2)*saturate(1-abs(p.x));
                     a=saturate(rays+pow(saturate(1-radius),5));
                 }
-                else
+                else if(_Mode<5.5)
                 {
                     // Contact shadows use ordinary alpha blending (SrcAlpha, OneMinusSrcAlpha).
                     // Fade to exact zero before the quad border so there is no rectangular silhouette.
                     a=exp2(-radius*radius*4)*(1-smoothstep(.65,1,radius));
                     return half4(0,0,0,a*saturate(_Color.a*i.color.a));
+                }
+                else
+                {
+                    // LineRenderer Tile UV: one repeat = one dash and one gap.
+                    float u=frac(i.uv.x);
+                    float dash=smoothstep(.02,.08,u)*(1-smoothstep(_DashFill-.08,_DashFill,u));
+                    a=dash*pow(saturate(1-abs(p.y)),1.5);
                 }
                 return half4(_Color.rgb*i.color.rgb,a*saturate(_Color.a*i.color.a));
             }
