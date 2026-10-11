@@ -34,6 +34,7 @@ namespace DemoRicochet
         public bool HasSpawnProtection => _protectionTimer > 0f;
         public float SpeedMultiplier => speedBoostTimer > 0f ? 1.45f : 1.0f;
         public bool HasRapidFire => rapidFireTimer > 0f;
+        public float HitFlashStrength => Mathf.Clamp01(_hitFlashTimer / 0.14f);
 
         private Vector3 _spawnPosition;
         private bool _isPlayer;
@@ -45,7 +46,6 @@ namespace DemoRicochet
         private Transform _hudRoot;
         private MeshRenderer[] _healthPips;
         private MaterialPropertyBlock _pipPropBlock;
-        private GameObject _rapidFireIconGroup;
         private TankPickupEffects _pickupEffects;
 
         private Renderer[] _modelRenderers;
@@ -116,20 +116,6 @@ namespace DemoRicochet
                 pip.transform.localScale = new Vector3(0.21f, 0.055f, 1f);
                 _healthPips[i] = pip.GetComponent<MeshRenderer>();
             }
-
-            Transform buffsRoot = new GameObject("ActiveBuffIcons").transform;
-            buffsRoot.SetParent(_hudRoot, false);
-            buffsRoot.localPosition = new Vector3(0f, 1.44f, 0.25f);
-            buffsRoot.localRotation = Quaternion.Euler(58f, 0f, 0f);
-
-            _rapidFireIconGroup = new GameObject("RapidFireBuffIcon");
-            _rapidFireIconGroup.transform.SetParent(buffsRoot, false);
-            if (_pickupEffects.RapidFireIconMaterial != null)
-            {
-                GameObject icon = NeonVisuals.CreateEffectQuad("TripleShotIcon", _rapidFireIconGroup.transform, _pickupEffects.RapidFireIconMaterial);
-                icon.transform.localScale = new Vector3(0.25f, 0.25f, 1f);
-            }
-            _rapidFireIconGroup.SetActive(false);
         }
 
         private void Update()
@@ -164,11 +150,6 @@ namespace DemoRicochet
             {
                 rapidFireTimer = Mathf.Max(0f, rapidFireTimer - dt);
                 if (rapidFireTimer <= 0f && _isPlayer) NeonAudio.BuffEnded(false);
-            }
-
-            if (_rapidFireIconGroup != null && _rapidFireIconGroup.activeSelf != (rapidFireTimer > 0f))
-            {
-                _rapidFireIconGroup.SetActive(rapidFireTimer > 0f);
             }
 
             if (_hitFlashTimer > 0f)

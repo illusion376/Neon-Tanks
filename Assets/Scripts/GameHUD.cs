@@ -41,12 +41,15 @@ namespace DemoRicochet
         private GameObject _respawnBanner;
         private Text _respawnText;
         private GameObject _pauseOverlay;
+        private Slider _sfxVolumeSlider;
+        private Text _sfxVolumeText;
         private GameObject _resultOverlay;
         private Text _resultHeading;
         private Text _resultSubheading;
         private Image _resultAccentLine;
-        private Text _resultButtonText;
-        private GameObject _resultSecondaryButton;
+        private GameObject _defeatOverlay;
+        private Text _defeatSubheading;
+        private Text _defeatButtonText;
         private GameObject _victoryOverlay;
         private Text _victoryStatus;
         private Text _victoryHeading;
@@ -263,6 +266,7 @@ namespace DemoRicochet
         public void SetPaused(bool paused)
         {
             if (_isMatchFinished) paused = false;
+            if (_isPaused && !paused) PlayerPrefs.Save();
             if (paused != _isPaused) NeonAudio.Pause(paused);
             _isPaused = paused;
             Time.timeScale = _isPaused ? 0f : 1f;
@@ -270,6 +274,12 @@ namespace DemoRicochet
             if (_mobileControls != null) _mobileControls.SetInputEnabled(!_isPaused && !_isMatchFinished);
             if (_pauseOverlay != null)
             {
+                if (_isPaused)
+                {
+                    float volume = NeonAudio.EffectsVolume;
+                    _sfxVolumeSlider.SetValueWithoutNotify(volume);
+                    _sfxVolumeText.text = $"{Mathf.RoundToInt(volume * 100f)}%";
+                }
                 _pauseOverlay.SetActive(_isPaused);
             }
         }
@@ -287,6 +297,12 @@ namespace DemoRicochet
             bool victory = _cyanScore > _magentaScore;
             bool draw = _cyanScore == _magentaScore;
             NeonAudio.MatchFinished(victory);
+
+            if (!victory && !draw)
+            {
+                ShowDefeat($"ИТОГОВЫЙ СЧЁТ   {_cyanScore:00}  :  {_magentaScore:00}", "НОВЫЙ МАТЧ");
+                return;
+            }
 
             if (_resultOverlay != null) _resultOverlay.SetActive(true);
             if (_resultHeading != null)
@@ -306,6 +322,7 @@ namespace DemoRicochet
 
         public void RestartMatch()
         {
+            PlayerPrefs.Save();
             if (LevelManager.IsActive)
             {
                 LevelManager.RestartLevel();
@@ -324,6 +341,7 @@ namespace DemoRicochet
 
             if (_pauseOverlay != null) _pauseOverlay.SetActive(false);
             if (_resultOverlay != null) _resultOverlay.SetActive(false);
+            if (_defeatOverlay != null) _defeatOverlay.SetActive(false);
             if (_victoryOverlay != null) _victoryOverlay.SetActive(false);
 
             RicochetBullet[] bullets = FindObjectsByType<RicochetBullet>();
@@ -387,23 +405,17 @@ namespace DemoRicochet
                 return;
             }
 
-            if (_resultOverlay != null) _resultOverlay.SetActive(true);
-            if (_resultHeading != null)
-            {
-                _resultHeading.text = "ПОРАЖЕНИЕ";
-                _resultHeading.color = Magenta;
-            }
-            if (_resultAccentLine != null) _resultAccentLine.color = Magenta;
+            ShowDefeat($"Осталось врагов: {_enemiesLeft}", "ЗАНОВО");
+        }
 
-            if (_resultSubheading != null)
-            {
-                _resultSubheading.text = $"Осталось врагов: {_enemiesLeft}";
-            }
-            if (_resultButtonText != null)
-            {
-                _resultButtonText.text = "ЗАНОВО" + KeyHint("R");
-            }
-            if (_resultSecondaryButton != null) _resultSecondaryButton.SetActive(false);
+        private void ShowDefeat(string subtitle, string buttonLabel)
+        {
+            _gameplayHud.SetActive(false);
+            _resultOverlay.SetActive(false);
+            if (_victoryOverlay != null) _victoryOverlay.SetActive(false);
+            _defeatSubheading.text = subtitle;
+            _defeatButtonText.text = buttonLabel + KeyHint("R");
+            _defeatOverlay.SetActive(true);
         }
 
         private void ShowLevelVictory(bool campaignDone)
@@ -529,14 +541,13 @@ namespace DemoRicochet
             _pauseOverlay = BuildPauseOverlay(canvasRoot);
             _pauseOverlay.SetActive(false);
 
+            _defeatOverlay = BuildDefeatOverlay(canvasRoot);
+            _defeatOverlay.SetActive(false);
+
             _resultOverlay = BuildModalOverlay(canvasRoot, "ResultOverlay", "ПОБЕДА!", "", Cyan,
                 "НОВЫЙ МАТЧ" + KeyHint("R"), OnResultPrimaryButton,
                 LevelManager.IsActive ? "ЗАНОВО" + KeyHint("R") : null, LevelManager.IsActive ? (UnityEngine.Events.UnityAction)RestartMatch : null,
                 out _resultHeading, out _resultSubheading, out _resultAccentLine);
-            Transform resultBtn = _resultOverlay.transform.Find("ModalCard/PrimaryBtn");
-            if (resultBtn != null) _resultButtonText = resultBtn.GetComponentInChildren<Text>();
-            Transform resultBtn2 = _resultOverlay.transform.Find("ModalCard/SecondaryBtn");
-            if (resultBtn2 != null) _resultSecondaryButton = resultBtn2.gameObject;
             _resultOverlay.SetActive(false);
 
             if (campaign)
@@ -544,6 +555,42 @@ namespace DemoRicochet
                 _victoryOverlay = BuildVictoryOverlay(canvasRoot);
                 _victoryOverlay.SetActive(false);
             }
+        }
+
+        private GameObject BuildDefeatOverlay(Transform parent)
+        {
+            Image backdrop = CreateImage("DefeatOverlay", parent, Vector2.zero, Vector2.zero, Vector2.zero,
+                new Color(0.004f, 0.013f, 0.023f, 0.58f));
+            backdrop.raycastTarget = true;
+            backdrop.rectTransform.anchorMax = Vector2.one;
+
+            RectTransform safeArea = CreateRect("SafeArea", backdrop.transform, Vector2.zero, Vector2.zero, Vector2.zero);
+            safeArea.gameObject.AddComponent<UISafeArea>();
+            Image panel = CreateImage("DefeatCard", safeArea, new Vector2(640f, 388f),
+                new Vector2(0.5f, 0.5f), Vector2.zero, Color.white);
+            panel.sprite = Resources.Load<Sprite>("NeonTanks/UI/DefeatPanel");
+
+            Image badge = CreateImage("BrokenTank", panel.transform, new Vector2(184f, 124f),
+                new Vector2(0.5f, 0.5f), new Vector2(0f, 114f), Color.white);
+            badge.sprite = Resources.Load<Sprite>("NeonTanks/UI/DefeatBadge");
+            CreateLabel("ПОРАЖЕНИЕ", panel.transform, 54, Magenta, new Vector2(548f, 76f),
+                new Vector2(0.5f, 0.5f), new Vector2(0f, 26f), FontStyle.Bold);
+            _defeatSubheading = CreateLabel("", panel.transform, 23, Muted, new Vector2(524f, 36f),
+                new Vector2(0.5f, 0.5f), new Vector2(0f, -40f));
+
+            Button restart = CreateButton("RestartButton", panel.transform, "", new Vector2(432f, 68f),
+                new Vector2(0.5f, 0.5f), new Vector2(0f, -122f), Color.white, RestartMatch);
+            restart.image.sprite = Resources.Load<Sprite>("NeonTanks/UI/DefeatRestart");
+            restart.image.type = Image.Type.Sliced;
+            ColorBlock colors = restart.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(0.82f, 1f, 1f);
+            colors.pressedColor = new Color(0.62f, 0.78f, 0.82f);
+            colors.fadeDuration = 0.08f;
+            restart.colors = colors;
+            _defeatButtonText = CreateLabel("ЗАНОВО" + KeyHint("R"), restart.transform, 25, White,
+                new Vector2(408f, 56f), new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
+            return backdrop.gameObject;
         }
 
         private GameObject BuildVictoryOverlay(Transform parent)
@@ -702,21 +749,69 @@ namespace DemoRicochet
             RectTransform safeArea = CreateRect("SafeArea", backdrop.transform, Vector2.zero, Vector2.zero, Vector2.zero);
             safeArea.gameObject.AddComponent<UISafeArea>();
 
-            Image panel = CreateImage("PauseCard", safeArea, new Vector2(460f, 284f), new Vector2(0.5f, 0.5f), Vector2.zero, Color.white);
+            Image panel = CreateImage("PauseCard", safeArea, new Vector2(460f, 376f), new Vector2(0.5f, 0.5f), Vector2.zero, Color.white);
             panel.sprite = Resources.Load<Sprite>("NeonTanks/UI/PausePanel");
             panel.type = Image.Type.Sliced;
 
-            CreateLabel("ПАУЗА", panel.transform, 42, Color.white, new Vector2(200f, 60f), new Vector2(0.5f, 0.5f), new Vector2(0f, 76f), FontStyle.Bold);
+            CreateLabel("ПАУЗА", panel.transform, 42, Color.white, new Vector2(200f, 60f), new Vector2(0.5f, 0.5f), new Vector2(0f, 122f), FontStyle.Bold);
             for (int i = 0; i < 2; i++)
             {
-                Image accent = CreateImage("TitleAccent_" + i, panel.transform, new Vector2(90f, 4f), new Vector2(0.5f, 0.5f), new Vector2(i == 0 ? -152f : 152f, 76f), i == 0 ? Cyan : Magenta);
+                Image accent = CreateImage("TitleAccent_" + i, panel.transform, new Vector2(90f, 4f), new Vector2(0.5f, 0.5f), new Vector2(i == 0 ? -152f : 152f, 122f), i == 0 ? Cyan : Magenta);
                 accent.sprite = Resources.Load<Sprite>("NeonTanks/UI/PauseTitleAccent");
                 if (i == 1) accent.rectTransform.localScale = new Vector3(-1f, 1f, 1f);
             }
 
-            CreatePauseMenuButton(panel.transform, "ContinueButton", "ПРОДОЛЖИТЬ", "PauseContinue", "PausePlayIcon", 0f, () => SetPaused(false));
-            CreatePauseMenuButton(panel.transform, "RestartButton", "НАЧАТЬ ЗАНОВО", "PauseRestart", "PauseRestartIcon", -77f, RestartMatch);
+            CreatePauseMenuButton(panel.transform, "ContinueButton", "ПРОДОЛЖИТЬ", "PauseContinue", "PausePlayIcon", 46f, () => SetPaused(false));
+            CreatePauseMenuButton(panel.transform, "RestartButton", "НАЧАТЬ ЗАНОВО", "PauseRestart", "PauseRestartIcon", -31f, RestartMatch);
+            BuildVolumeSlider(panel.transform);
             return backdrop.gameObject;
+        }
+
+        private void BuildVolumeSlider(Transform parent)
+        {
+            CreateLabel("ЗВУКИ", parent, 15, Muted, new Vector2(260f, 26f),
+                new Vector2(0.5f, 0.5f), new Vector2(-54f, -100f), FontStyle.Bold).alignment = TextAnchor.MiddleLeft;
+            _sfxVolumeText = CreateLabel("", parent, 15, Cyan, new Vector2(80f, 26f),
+                new Vector2(0.5f, 0.5f), new Vector2(144f, -100f), FontStyle.Bold);
+            _sfxVolumeText.alignment = TextAnchor.MiddleRight;
+
+            Image hitArea = CreateImage("SfxVolumeSlider", parent, new Vector2(368f, 42f),
+                new Vector2(0.5f, 0.5f), new Vector2(0f, -136f), Color.clear);
+            hitArea.raycastTarget = true;
+            _sfxVolumeSlider = hitArea.gameObject.AddComponent<Slider>();
+            _sfxVolumeSlider.minValue = 0f;
+            _sfxVolumeSlider.maxValue = 1f;
+            _sfxVolumeSlider.direction = Slider.Direction.LeftToRight;
+            _sfxVolumeSlider.navigation = new Navigation { mode = Navigation.Mode.None };
+
+            CreateImage("Track", hitArea.transform, new Vector2(344f, 6f),
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Color(0.12f, 0.26f, 0.32f));
+            RectTransform fillArea = CreateRect("FillArea", hitArea.transform, new Vector2(344f, 6f),
+                new Vector2(0.5f, 0.5f), Vector2.zero);
+            Image fill = CreateImage("Fill", fillArea, Vector2.zero, Vector2.zero, Vector2.zero, Cyan);
+            fill.rectTransform.anchorMax = Vector2.one;
+            _sfxVolumeSlider.fillRect = fill.rectTransform;
+
+            RectTransform handleArea = CreateRect("HandleArea", hitArea.transform, new Vector2(344f, 26f),
+                new Vector2(0.5f, 0.5f), Vector2.zero);
+            Image handle = CreateImage("Handle", handleArea, new Vector2(22f, 0f),
+                new Vector2(0.5f, 0.5f), Vector2.zero, Cyan);
+            _sfxVolumeSlider.handleRect = handle.rectTransform;
+            _sfxVolumeSlider.targetGraphic = handle;
+            ColorBlock colors = _sfxVolumeSlider.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(0.9f, 1f, 1f);
+            colors.pressedColor = White;
+            _sfxVolumeSlider.colors = colors;
+
+            float volume = NeonAudio.EffectsVolume;
+            _sfxVolumeSlider.SetValueWithoutNotify(volume);
+            _sfxVolumeText.text = $"{Mathf.RoundToInt(volume * 100f)}%";
+            _sfxVolumeSlider.onValueChanged.AddListener(value =>
+            {
+                NeonAudio.SetEffectsVolume(value);
+                _sfxVolumeText.text = $"{Mathf.RoundToInt(value * 100f)}%";
+            });
         }
 
         private void CreatePauseMenuButton(Transform parent, string name, string label, string art, string iconArt, float y, UnityEngine.Events.UnityAction onClick)
