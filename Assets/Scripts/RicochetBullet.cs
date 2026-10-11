@@ -149,19 +149,14 @@ namespace DemoRicochet
 
         private static void NormalizeBoltMesh(Transform model)
         {
-            Renderer[] renderers = model.GetComponentsInChildren<Renderer>();
-            if (renderers.Length == 0) return;
-
-            Bounds bounds = renderers[0].bounds;
-            for (int i = 1; i < renderers.Length; i++)
-            {
-                bounds.Encapsulate(renderers[i].bounds);
-            }
-
-            Vector3 localCenter = model.parent.InverseTransformPoint(bounds.center);
-            float scale = 0.42f / Mathf.Max(0.001f, bounds.size.z);
+            MeshFilter mf = model.GetComponentInChildren<MeshFilter>();
+            if (mf == null || mf.sharedMesh == null) return;
+            
+            Bounds localBounds = mf.sharedMesh.bounds;
+            float meshLength = Mathf.Max(0.001f, localBounds.size.z);
+            float scale = 0.42f / meshLength;
             model.localScale = Vector3.one * scale;
-            model.localPosition = -localCenter * scale;
+            model.localPosition = -localBounds.center * scale;
         }
 
         private void Update()
