@@ -45,9 +45,8 @@ namespace DemoRicochet
         private Transform _hudRoot;
         private MeshRenderer[] _healthPips;
         private MaterialPropertyBlock _pipPropBlock;
-        private Transform _shieldRoot;
-        private GameObject _speedIconGroup;
         private GameObject _rapidFireIconGroup;
+        private TankPickupEffects _pickupEffects;
 
         private Renderer[] _modelRenderers;
         private MaterialPropertyBlock _flashPropBlock;
@@ -74,7 +73,10 @@ namespace DemoRicochet
             _protectionTimer = spawnProtectionTime;
 
             CacheModelRenderers();
-            BuildHealthAndShieldVisuals();
+            _pickupEffects = GetComponent<TankPickupEffects>();
+            if (_pickupEffects == null) _pickupEffects = gameObject.AddComponent<TankPickupEffects>();
+            _pickupEffects.Initialize(this);
+            BuildHealthVisuals();
             RefreshHealthPips();
         }
 
@@ -92,7 +94,7 @@ namespace DemoRicochet
             _flashPropBlock = new MaterialPropertyBlock();
         }
 
-        private void BuildHealthAndShieldVisuals()
+        private void BuildHealthVisuals()
         {
             Shader groundShader = NeonVisuals.GroundShader;
             if (groundShader == null) return;
@@ -115,53 +117,17 @@ namespace DemoRicochet
                 _healthPips[i] = pip.GetComponent<MeshRenderer>();
             }
 
-            _shieldRoot = new GameObject("EnergyShield").transform;
-            _shieldRoot.SetParent(_hudRoot, false);
-            _shieldRoot.localPosition = new Vector3(0f, 0.46f, 0f);
-
-            Color shieldColor = new Color(0.015f, 0.78f, 1.0f, 0.48f);
-            Material shieldMat = new Material(groundShader) { name = "ShieldArcMat" };
-            shieldMat.SetFloat("_Mode", 1f); // Кольцо
-            shieldMat.SetVector("_Color", shieldColor.linear * 2.6f);
-
-            for (int r = 0; r < 3; r++)
-            {
-                GameObject ring = NeonVisuals.CreateEffectQuad("ShieldRing_" + r, _shieldRoot, shieldMat);
-                ring.transform.localScale = Vector3.one * 1.95f;
-                ring.transform.localRotation = Quaternion.Euler(r == 0 ? 90f : 0f, r == 2 ? 90f : 0f, 0f);
-            }
-
             Transform buffsRoot = new GameObject("ActiveBuffIcons").transform;
             buffsRoot.SetParent(_hudRoot, false);
             buffsRoot.localPosition = new Vector3(0f, 1.44f, 0.25f);
             buffsRoot.localRotation = Quaternion.Euler(58f, 0f, 0f);
 
-            _speedIconGroup = new GameObject("SpeedBuffIcon");
-            _speedIconGroup.transform.SetParent(buffsRoot, false);
-            _speedIconGroup.transform.localPosition = new Vector3(-0.16f, 0f, 0f);
-            Material speedIconMat = new Material(groundShader) { name = "SpeedIconMat" };
-            speedIconMat.SetFloat("_Mode", 2f);
-            speedIconMat.SetVector("_Color", new Color(0.18f, 1.0f, 0.80f).linear * 2.2f);
-            for (int part = 0; part < 2; part++)
-            {
-                GameObject bar = NeonVisuals.CreateEffectQuad("Stroke_" + part, _speedIconGroup.transform, speedIconMat);
-                bar.transform.localRotation = Quaternion.Euler(0f, 0f, part == 0 ? -35f : 35f);
-                bar.transform.localPosition = new Vector3(part == 0 ? -0.025f : 0.025f, part == 0 ? 0.025f : -0.025f, 0f);
-                bar.transform.localScale = new Vector3(0.028f, 0.13f, 1f);
-            }
-            _speedIconGroup.SetActive(false);
-
             _rapidFireIconGroup = new GameObject("RapidFireBuffIcon");
             _rapidFireIconGroup.transform.SetParent(buffsRoot, false);
-            _rapidFireIconGroup.transform.localPosition = new Vector3(0.16f, 0f, 0f);
-            Material rapidIconMat = new Material(groundShader) { name = "RapidIconMat" };
-            rapidIconMat.SetFloat("_Mode", 2f);
-            rapidIconMat.SetVector("_Color", new Color(1.0f, 0.76f, 0.12f).linear * 2.2f);
-            for (int part = 0; part < 3; part++)
+            if (_pickupEffects.RapidFireIconMaterial != null)
             {
-                GameObject bar = NeonVisuals.CreateEffectQuad("Stroke_" + part, _rapidFireIconGroup.transform, rapidIconMat);
-                bar.transform.localPosition = new Vector3((part - 1) * 0.048f, 0f, 0f);
-                bar.transform.localScale = new Vector3(0.026f, 0.13f, 1f);
+                GameObject icon = NeonVisuals.CreateEffectQuad("TripleShotIcon", _rapidFireIconGroup.transform, _pickupEffects.RapidFireIconMaterial);
+                icon.transform.localScale = new Vector3(0.25f, 0.25f, 1f);
             }
             _rapidFireIconGroup.SetActive(false);
         }
@@ -200,27 +166,9 @@ namespace DemoRicochet
                 if (rapidFireTimer <= 0f && _isPlayer) NeonAudio.BuffEnded(false);
             }
 
-            if (_speedIconGroup != null && _speedIconGroup.activeSelf != (speedBoostTimer > 0f))
-            {
-                _speedIconGroup.SetActive(speedBoostTimer > 0f);
-            }
-
             if (_rapidFireIconGroup != null && _rapidFireIconGroup.activeSelf != (rapidFireTimer > 0f))
             {
                 _rapidFireIconGroup.SetActive(rapidFireTimer > 0f);
-            }
-
-            if (_shieldRoot != null)
-            {
-                bool showShield = _protectionTimer > 0f || shieldCharges > 0;
-                if (_shieldRoot.gameObject.activeSelf != showShield)
-                {
-                    _shieldRoot.gameObject.SetActive(showShield);
-                }
-                if (showShield)
-                {
-                    _shieldRoot.localRotation = Quaternion.Euler(0f, Time.time * 45f, 0f);
-                }
             }
 
             if (_hitFlashTimer > 0f)
@@ -234,6 +182,7 @@ namespace DemoRicochet
         public void NotifyFiredShot()
         {
             _protectionTimer = 0f;
+            if (_pickupEffects != null) _pickupEffects.PlayRapidFireShot();
         }
 
         public bool OnHitByBullet(int damage, bool bulletIsCyan, Collider shooterCollider, int bounceCount)
@@ -263,6 +212,7 @@ namespace DemoRicochet
             if (_protectionTimer > 0f)
             {
                 _hitFlashTimer = 0.14f;
+                if (_pickupEffects != null) _pickupEffects.PulseShield();
                 NeonAudio.ProtectDeflect(transform.position);
                 return true;
             }
@@ -271,7 +221,7 @@ namespace DemoRicochet
             {
                 shieldCharges--;
                 _hitFlashTimer = 0.14f;
-                SpawnRingBurst(transform.position, new Color(0.015f, 0.78f, 1.0f), 2.1f);
+                if (_pickupEffects != null) _pickupEffects.PulseShield();
                 NeonAudio.ShieldBlock(transform.position);
                 return true;
             }
@@ -315,6 +265,11 @@ namespace DemoRicochet
             rapidFireTimer = Mathf.Max(rapidFireTimer, duration);
         }
 
+        public void NotifyPickupCollected(PickupType type)
+        {
+            if (_pickupEffects != null) _pickupEffects.PlayPickup(type);
+        }
+
         private void Die()
         {
             _isDead = true;
@@ -322,6 +277,7 @@ namespace DemoRicochet
             speedBoostTimer = 0f;
             rapidFireTimer = 0f;
             ApplyHitFlash(0f);
+            if (_pickupEffects != null) _pickupEffects.ResetEffects();
 
             TankExplosionEffect.Play(transform, GetTeamColor());
 
@@ -350,6 +306,7 @@ namespace DemoRicochet
             currentHealth = maxHealth;
             _protectionTimer = spawnProtectionTime;
             transform.position = _spawnPosition;
+            if (_pickupEffects != null) _pickupEffects.ResetEffects();
 
             if (_tankCollider != null) _tankCollider.enabled = true;
             SetVisualsVisible(true);
