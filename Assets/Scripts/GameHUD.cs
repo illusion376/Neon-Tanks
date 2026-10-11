@@ -47,6 +47,11 @@ namespace DemoRicochet
         private Image _resultAccentLine;
         private Text _resultButtonText;
         private GameObject _resultSecondaryButton;
+        private GameObject _victoryOverlay;
+        private Text _victoryStatus;
+        private Text _victoryHeading;
+        private Text _victoryTime;
+        private Text _victoryButtonText;
 
         // Режим кампании (LevelManager): победа — все враги уничтожены, поражение — кончились жизни
         private bool _levelWon;
@@ -296,6 +301,7 @@ namespace DemoRicochet
 
             if (_pauseOverlay != null) _pauseOverlay.SetActive(false);
             if (_resultOverlay != null) _resultOverlay.SetActive(false);
+            if (_victoryOverlay != null) _victoryOverlay.SetActive(false);
 
             RicochetBullet[] bullets = FindObjectsByType<RicochetBullet>();
             for (int i = 0; i < bullets.Length; i++)
@@ -351,29 +357,43 @@ namespace DemoRicochet
             if (_mobileControls != null) _mobileControls.SetInputEnabled(false);
 
             bool campaignDone = victory && LevelManager.IsLastLevel;
-            Color accent = victory ? Cyan : Magenta;
+            if (victory)
+            {
+                ShowLevelVictory(campaignDone);
+                return;
+            }
 
             if (_resultOverlay != null) _resultOverlay.SetActive(true);
             if (_resultHeading != null)
             {
-                _resultHeading.text = campaignDone ? "КАМПАНИЯ ПРОЙДЕНА!" : (victory ? "УРОВЕНЬ ПРОЙДЕН!" : "ПОРАЖЕНИЕ");
-                _resultHeading.color = accent;
+                _resultHeading.text = "ПОРАЖЕНИЕ";
+                _resultHeading.color = Magenta;
             }
-            if (_resultAccentLine != null) _resultAccentLine.color = accent;
+            if (_resultAccentLine != null) _resultAccentLine.color = Magenta;
 
-            int secs = Mathf.CeilToInt(_remainingTime);
             if (_resultSubheading != null)
             {
-                _resultSubheading.text = victory
-                    ? $"Время: {secs / 60:00}:{secs % 60:00}"
-                    : $"Осталось врагов: {_enemiesLeft}";
+                _resultSubheading.text = $"Осталось врагов: {_enemiesLeft}";
             }
             if (_resultButtonText != null)
             {
-                _resultButtonText.text = victory ? (campaignDone ? "С ПЕРВОГО УРОВНЯ" : "СЛЕДУЮЩИЙ УРОВЕНЬ") + KeyHint("Enter") : "ЗАНОВО" + KeyHint("R");
+                _resultButtonText.text = "ЗАНОВО" + KeyHint("R");
             }
-            // При поражении основная кнопка уже «Заново», вторая не нужна
-            if (_resultSecondaryButton != null) _resultSecondaryButton.SetActive(victory);
+            if (_resultSecondaryButton != null) _resultSecondaryButton.SetActive(false);
+        }
+
+        private void ShowLevelVictory(bool campaignDone)
+        {
+            _resultOverlay.SetActive(false);
+            _gameplayHud.SetActive(false);
+            _victoryStatus.text = $"УРОВЕНЬ {LevelManager.CurrentIndex + 1:00} / ЗАВЕРШЁН";
+            string title = campaignDone ? "КАМПАНИЯ" : "УРОВЕНЬ";
+            string completed = campaignDone ? "ПРОЙДЕНА!" : "ПРОЙДЕН!";
+            _victoryHeading.text = $"<color=#{ColorUtility.ToHtmlStringRGB(White)}>{title}</color>\n{completed}";
+            int secs = Mathf.CeilToInt(_remainingTime);
+            _victoryTime.text = $"{secs / 60:00}:{secs % 60:00}";
+            _victoryButtonText.text = campaignDone ? "С ПЕРВОГО УРОВНЯ" : "СЛЕДУЮЩИЙ УРОВЕНЬ";
+            _victoryOverlay.SetActive(true);
         }
 
         /// <summary>
@@ -483,6 +503,123 @@ namespace DemoRicochet
             Transform resultBtn2 = _resultOverlay.transform.Find("ModalCard/SecondaryBtn");
             if (resultBtn2 != null) _resultSecondaryButton = resultBtn2.gameObject;
             _resultOverlay.SetActive(false);
+
+            if (campaign)
+            {
+                _victoryOverlay = BuildVictoryOverlay(canvasRoot);
+                _victoryOverlay.SetActive(false);
+            }
+        }
+
+        private GameObject BuildVictoryOverlay(Transform parent)
+        {
+            Image backdrop = CreateImage("VictoryOverlay", parent, Vector2.zero, Vector2.zero, Vector2.zero,
+                new Color(0.004f, 0.013f, 0.023f, 0.74f));
+            backdrop.raycastTarget = true;
+            backdrop.rectTransform.anchorMax = Vector2.one;
+
+            RectTransform safeArea = CreateRect("SafeArea", backdrop.transform, Vector2.zero, Vector2.zero, Vector2.zero);
+            safeArea.gameObject.AddComponent<UISafeArea>();
+            RectTransform layout = CreateRect("VictoryLayout", safeArea, new Vector2(720f, 426f),
+                new Vector2(0.5f, 0.5f), Vector2.zero);
+
+            Image panel = CreateImage("VictoryCard", layout, new Vector2(720f, 340f),
+                new Vector2(0.5f, 1f), new Vector2(0f, -170f), Color.white);
+            panel.sprite = Resources.Load<Sprite>("NeonTanks/UI/VictoryPanel");
+            panel.type = Image.Type.Sliced;
+            Transform card = panel.transform;
+
+            _victoryStatus = CreateLabel("", card, 13, Mint, new Vector2(440f, 24f),
+                new Vector2(0f, 1f), new Vector2(264f, -36f), FontStyle.Bold);
+            _victoryStatus.alignment = TextAnchor.MiddleLeft;
+
+            _victoryHeading = CreateLabel("", card, 52, Cyan, new Vector2(452f, 124f),
+                new Vector2(0f, 1f), new Vector2(270f, -122f), FontStyle.Bold);
+            _victoryHeading.alignment = TextAnchor.MiddleLeft;
+            _victoryHeading.lineSpacing = 0.95f;
+
+            Image badge = CreateImage("TankBadge", card, new Vector2(192f, 192f),
+                new Vector2(1f, 1f), new Vector2(-118f, -122f), Color.white);
+            badge.sprite = Resources.Load<Sprite>("NeonTanks/UI/VictoryBadge");
+
+            Text timeLabel = CreateLabel("Время прохождения", card, 18, Muted, new Vector2(218f, 28f),
+                new Vector2(0f, 1f), new Vector2(153f, -197f));
+            timeLabel.alignment = TextAnchor.MiddleLeft;
+            _victoryTime = CreateLabel("", card, 20, White, new Vector2(128f, 28f),
+                new Vector2(0f, 1f), new Vector2(318f, -197f), FontStyle.Bold);
+            _victoryTime.alignment = TextAnchor.MiddleLeft;
+            CreateImage("Divider", card, new Vector2(632f, 1f),
+                new Vector2(0f, 1f), new Vector2(360f, -232f), new Color(0.15f, 0.38f, 0.46f, 0.38f));
+            CreateLabel("ПРОГРЕСС КАМПАНИИ", card, 12, Muted, new Vector2(208f, 24f),
+                new Vector2(0f, 1f), new Vector2(148f, -283f), FontStyle.Bold).alignment = TextAnchor.MiddleLeft;
+            BuildVictoryProgress(card);
+
+            _victoryButtonText = CreateVictoryButton(layout, "NextLevelButton", "СЛЕДУЮЩИЙ УРОВЕНЬ", "VictoryNext",
+                new Vector2(410f, 58f), new Vector2(-124f, 38f), "ENTER", new Color(0.018f, 0.08f, 0.12f), OnResultPrimaryButton);
+            CreateVictoryButton(layout, "RestartButton", "ЗАНОВО", "VictoryRestart",
+                new Vector2(230f, 58f), new Vector2(214f, 38f), "R", White, RestartMatch);
+            return backdrop.gameObject;
+        }
+
+        private void BuildVictoryProgress(Transform card)
+        {
+            int count = LevelManager.LevelCount;
+            float spacing = Mathf.Min(88f, 360f / Mathf.Max(1, count - 1));
+            float nodeSize = Mathf.Min(44f, spacing * 0.7f);
+            float startX = 476f - spacing * (count - 1) * 0.5f;
+            Sprite ringSprite = Resources.Load<Sprite>("NeonTanks/UI/VictoryNode");
+            for (int i = 0; i < count; i++)
+            {
+                Color color = i <= LevelManager.CurrentIndex ? Cyan : new Color(0.23f, 0.42f, 0.51f);
+                Vector2 position = new Vector2(startX + i * spacing, -283f);
+                Image node = CreateImage("Stage_" + (i + 1), card, Vector2.one * nodeSize,
+                    new Vector2(0f, 1f), position, color);
+                node.sprite = ringSprite;
+                CreateLabel((i + 1).ToString("00"), node.transform, Mathf.RoundToInt(nodeSize * 0.34f),
+                    i <= LevelManager.CurrentIndex ? Mint : Muted, Vector2.one * nodeSize,
+                    new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
+
+                if (i >= count - 1) continue;
+                Color linkColor = i < LevelManager.CurrentIndex
+                    ? new Color(Cyan.r, Cyan.g, Cyan.b, 0.55f) : new Color(0.23f, 0.42f, 0.51f, 0.6f);
+                for (int dot = 1; dot <= 4; dot++)
+                {
+                    float x = position.x + Mathf.Lerp(nodeSize * 0.5f, spacing - nodeSize * 0.5f, dot / 5f);
+                    CreateImage("StageLink_" + i + "_" + dot, card, new Vector2(3f, 2f),
+                        new Vector2(0f, 1f), new Vector2(x, position.y), linkColor);
+                }
+            }
+        }
+
+        private Text CreateVictoryButton(Transform parent, string name, string label, string art, Vector2 size,
+            Vector2 position, string key, Color textColor, UnityEngine.Events.UnityAction action)
+        {
+            Button button = CreateButton(name, parent, "", size, new Vector2(0.5f, 0f), position, Color.white, action);
+            button.image.sprite = Resources.Load<Sprite>("NeonTanks/UI/" + art);
+            button.image.type = Image.Type.Sliced;
+            ColorBlock colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(0.9f, 1f, 1f);
+            colors.pressedColor = new Color(0.72f, 0.78f, 0.82f);
+            colors.fadeDuration = 0.08f;
+            button.colors = colors;
+
+            bool showKey = !MobileControls.IsTouchMode;
+            Text text = CreateLabel(label, button.transform, 20, textColor, new Vector2(size.x - (showKey ? 94f : 32f), size.y),
+                new Vector2(0.5f, 0.5f), new Vector2(showKey ? -30f : 0f, 0f), FontStyle.Bold);
+            text.resizeTextForBestFit = true;
+            text.resizeTextMinSize = 14;
+            text.resizeTextMaxSize = 20;
+            if (showKey)
+            {
+                Image keycap = CreateImage("KeyHint", button.transform, new Vector2(56f, 36f),
+                    new Vector2(1f, 0.5f), new Vector2(-42f, 0f), Color.white);
+                keycap.sprite = Resources.Load<Sprite>("NeonTanks/UI/VictoryKeycap");
+                keycap.type = Image.Type.Sliced;
+                CreateLabel(key, keycap.transform, 11, White, new Vector2(52f, 32f),
+                    new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
+            }
+            return text;
         }
 
         private GameObject BuildLevelIntro(Transform parent)
