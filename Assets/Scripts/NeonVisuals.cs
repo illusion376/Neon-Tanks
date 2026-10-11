@@ -209,7 +209,8 @@ namespace DemoRicochet
             {
                 _contactShadowMat = new Material(_groundShader)
                 {
-                    name = "ContactShadowMat"
+                    name = "ContactShadowMat",
+                    renderQueue = 2995
                 };
                 _contactShadowMat.SetFloat("_Mode", 5f);
                 _contactShadowMat.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
@@ -218,7 +219,7 @@ namespace DemoRicochet
             }
 
             GameObject shadowObj = CreateEffectQuad("ContactShadow", parent, _contactShadowMat);
-            shadowObj.transform.localPosition = new Vector3(0f, 0.015f, 0f);
+            shadowObj.transform.localPosition = new Vector3(0f, 0.010f, 0f);
             shadowObj.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
             shadowObj.transform.localScale = new Vector3(size.x, size.y, 1f);
             return shadowObj;

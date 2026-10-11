@@ -47,8 +47,18 @@ Shader "NeonRicochet/NeonSurface"
                 // All color inputs are linear radiance. Runtime materials use SetVector so HDR
                 // intensity is multiplied after sRGB decoding, never decoded a second time.
                 float3 albedo=max(_Color.rgb,0);
-                float3 n=normalize(i.normal), v=normalize(_WorldSpaceCameraPos-i.world);
-                float metallic=saturate(_Metallic), smoothness=saturate(_Glossiness);
+                float3 n=normalize(i.normal);
+                float3 orthoView=normalize(UNITY_MATRIX_V[2].xyz);
+                float3 perspView=normalize(_WorldSpaceCameraPos-i.world);
+                float3 v=normalize(lerp(perspView,orthoView,unity_OrthoParams.w));
+
+                // Geometric specular AA (Toksvig / normal variance) prevents 1-pixel bevel flashes when camera moves.
+                float3 dndx=ddx(i.normal), dndy=ddy(i.normal);
+                float normalVariance=dot(dndx,dndx)+dot(dndy,dndy);
+                float baseRoughness=1.0-saturate(_Glossiness);
+                float filteredRoughness=saturate(sqrt(baseRoughness*baseRoughness+min(2.0*normalVariance,0.35)));
+                float metallic=saturate(_Metallic), smoothness=1.0-filteredRoughness;
+
                 float3 key=normalize(float3(-.52,.78,-.35));
                 float3 fill=normalize(float3(.62,.32,.71));
                 float ndl=saturate(dot(n,key)), ndv=saturate(dot(n,v));
@@ -68,11 +78,11 @@ Shader "NeonRicochet/NeonSurface"
                 float3 halfDirection=normalize(key+v);
                 float ndh=saturate(dot(n,halfDirection));
                 float broad=pow(ndh,lerp(8,28,smoothness));
-                float gloss=pow(ndh,lerp(20,128,smoothness));
+                float gloss=pow(ndh,lerp(20,96,smoothness))*(1.0-saturate(normalVariance*4.0));
                 float3 reflectance=lerp(float3(.04,.04,.04),albedo,metallic);
                 float fresnel=pow(1-ndv,5);
                 reflectance=lerp(reflectance,float3(.7,.78,.9),fresnel*.45);
-                color+=reflectance*float3(.76,.86,1)*(broad*.65+gloss*2.6)*ndl;
+                color+=reflectance*float3(.76,.86,1)*(broad*.65+gloss*2.2)*ndl;
                 float rim=pow(1-ndv,3)*max(_Rim,0);
                 color+=float3(.075,.11,.19)*rim*(.35+.65*hemisphere);
 
@@ -104,9 +114,11 @@ Shader "NeonRicochet/NeonSurface"
                 if(_Grid>.5)
                 {
                     float2 p=i.world.xz*_GridScale;
-                    float2 g=abs(frac(p-.5)-.5)/max(fwidth(p),.0001);
-                    float grid=1-saturate(min(g.x,g.y));
-                    color+=grid*_GridColor.rgb*_GridEmission;
+                    float2 fw=max(fwidth(p),.0001);
+                    float2 g=abs(frac(p-.5)-.5)/fw;
+                    float grid=1-smoothstep(0.0,1.85,min(g.x,g.y));
+                    float lodFade=saturate(1.0-max(fw.x,fw.y)*3.5);
+                    color+=grid*lodFade*_GridColor.rgb*_GridEmission;
                 }
                 // Emissive rails stay independent of surface orientation and remain distinctly colored.
                 return half4(color+max(_EmissionColor.rgb,0),1);

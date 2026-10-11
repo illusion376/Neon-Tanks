@@ -95,7 +95,7 @@ namespace DemoRicochet
             Shader groundShader = NeonVisuals.GroundShader;
             if (groundShader != null)
             {
-                _haloMat = new Material(groundShader) { name = "PickupHaloMat" };
+                _haloMat = new Material(groundShader) { name = "PickupHaloMat", renderQueue = 3009 };
                 _haloMat.SetFloat("_Mode", 1f);
                 _haloMat.SetVector(_colorId, accent.linear * 1.8f);
 
@@ -105,7 +105,7 @@ namespace DemoRicochet
                 _haloTransform.localRotation = Quaternion.Euler(90f, 0f, 0f);
                 _haloTransform.localScale = new Vector3(1.25f, 1.25f, 1f);
 
-                _glowMat = new Material(groundShader) { name = "PickupGlowMat" };
+                _glowMat = new Material(groundShader) { name = "PickupGlowMat", renderQueue = 3003 };
                 _glowMat.SetFloat("_Mode", 0f);
                 _glowMat.SetVector(_colorId, accent.linear * 1.15f);
 

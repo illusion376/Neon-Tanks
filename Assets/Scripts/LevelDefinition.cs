@@ -86,19 +86,19 @@ namespace DemoRicochet
             _safeZoneVisual = zone.gameObject;
             _safeZoneVisual.SetActive(_safeZoneActive);
 
-            Material fillMat = new Material(ground) { name = "SafeZoneFill" };
+            Material fillMat = new Material(ground) { name = "SafeZoneFill", renderQueue = 2998 };
             fillMat.SetFloat("_Mode", 0f);
             fillMat.SetVector("_Color", mint.linear * 0.6f);
             GameObject fill = NeonVisuals.CreateEffectQuad("Fill", zone, fillMat);
-            fill.transform.localPosition = new Vector3(0f, 0.012f, 0f);
+            fill.transform.localPosition = new Vector3(0f, 0.015f, 0f);
             fill.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
             fill.transform.localScale = Vector3.one * safeZoneRadius * 2.4f;
 
-            Material ringMat = new Material(ground) { name = "SafeZoneRing" };
+            Material ringMat = new Material(ground) { name = "SafeZoneRing", renderQueue = 3008 };
             ringMat.SetFloat("_Mode", 1f);
             ringMat.SetVector("_Color", mint.linear * 1.6f);
             GameObject ring = NeonVisuals.CreateEffectQuad("Ring", zone, ringMat);
-            ring.transform.localPosition = new Vector3(0f, 0.02f, 0f);
+            ring.transform.localPosition = new Vector3(0f, 0.022f, 0f);
             ring.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
             ring.transform.localScale = Vector3.one * safeZoneRadius * 2f;
         }

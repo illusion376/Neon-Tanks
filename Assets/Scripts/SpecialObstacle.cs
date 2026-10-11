@@ -105,12 +105,12 @@ namespace DemoRicochet
 
             if (groundShader != null && _floorGlowRenderer == null)
             {
-                _floorGlowMat = new Material(groundShader) { name = "ObstacleFloorGlow" };
+                _floorGlowMat = new Material(groundShader) { name = "ObstacleFloorGlow", renderQueue = 3002 };
                 _floorGlowMat.SetFloat("_Mode", 0f);
                 _floorGlowMat.SetVector(_colorId, accent.linear * 0.95f);
 
                 GameObject glowQuad = NeonVisuals.CreateEffectQuad("CoverGlow", transform, _floorGlowMat);
-                glowQuad.transform.localPosition = new Vector3(0f, 0.014f, 0f);
+                glowQuad.transform.localPosition = new Vector3(0f, 0.018f, 0f);
                 glowQuad.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
                 glowQuad.transform.localScale = new Vector3(2.6f, 2.6f, 1f);
                 _floorGlowRenderer = glowQuad.GetComponent<MeshRenderer>();

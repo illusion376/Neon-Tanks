@@ -15,19 +15,19 @@ MonoBehaviour:
   active: 1
   skipIterations:
     m_OverrideState: 1
-    m_Value: 0
+    m_Value: 1
   threshold:
     m_OverrideState: 1
-    m_Value: 1.15
+    m_Value: 0.95
   intensity:
     m_OverrideState: 1
     m_Value: 0.62
   scatter:
     m_OverrideState: 1
-    m_Value: 0.62
+    m_Value: 0.65
   clamp:
-    m_OverrideState: 0
-    m_Value: 65472
+    m_OverrideState: 1
+    m_Value: 3.2
   tint:
     m_OverrideState: 0
     m_Value: {r: 1, g: 1, b: 1, a: 1}

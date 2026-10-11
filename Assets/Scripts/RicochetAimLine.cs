@@ -118,8 +118,11 @@ namespace DemoRicochet
 
             _lineMaterial.SetFloat("_DashFill", fill);
             _glowMaterial.SetFloat("_DashFill", fill);
-            _lineMaterial.SetColor("_Color", aimColor.linear * 3.2f);
-            _glowMaterial.SetColor("_Color", aimColor.linear * 3.0f);
+            float readyFactor = _tank != null && _tank.FireCooldownProgress < 1f
+                ? Mathf.Lerp(0.32f, 0.75f, _tank.FireCooldownProgress)
+                : 1f;
+            _lineMaterial.SetColor("_Color", aimColor.linear * (3.2f * readyFactor));
+            _glowMaterial.SetColor("_Color", aimColor.linear * (3.0f * readyFactor));
         }
 
         private void LateUpdate()

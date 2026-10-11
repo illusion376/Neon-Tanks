@@ -137,7 +137,7 @@ namespace DemoRicochet
             {
                 Color magentaTint = new Color(1.0f, 0.025f, 0.56f);
 
-                Material glowMat = new Material(groundShader) { name = "EnemyUnderglow" };
+                Material glowMat = new Material(groundShader) { name = "EnemyUnderglow", renderQueue = 3005 };
                 glowMat.SetFloat("_Mode", 0f);
                 glowMat.SetVector("_Color", magentaTint.linear * 1.8f);
                 GameObject glowQuad = NeonVisuals.CreateEffectQuad("Underglow", transform, glowMat);

@@ -15,7 +15,7 @@ namespace DemoRicochet
         public bool isCyanTeam = true;
         public float moveSpeed = 5.5f;
         public float bodyTurnSpeed = 540f;
-        public float fireCooldown = 0.35f;
+        public float fireCooldown = 0.55f;
 
         private Transform _hullTransform;
         private Transform _turretPivot;
@@ -118,7 +118,7 @@ namespace DemoRicochet
             {
                 Color teamTint = isCyanTeam ? new Color(0.015f, 0.78f, 1.0f) : new Color(1.0f, 0.025f, 0.56f);
 
-                Material glowMat = new Material(groundShader) { name = "TankUnderglow" };
+                Material glowMat = new Material(groundShader) { name = "TankUnderglow", renderQueue = 3005 };
                 glowMat.SetFloat("_Mode", 0f);
                 glowMat.SetVector("_Color", teamTint.linear * 1.8f);
                 GameObject glowQuad = NeonVisuals.CreateEffectQuad("Underglow", transform, glowMat);

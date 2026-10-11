@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 namespace DemoRicochet
 {
@@ -112,6 +113,19 @@ namespace DemoRicochet
             _cam.farClipPlane = 120f;
             _cam.clearFlags = CameraClearFlags.SolidColor;
             _cam.backgroundColor = new Color(0.085f, 0.085f, 0.18f);
+            _cam.allowMSAA = true;
+            _cam.allowHDR = true;
+            _cam.transparencySortMode = TransparencySortMode.CustomAxis;
+            _cam.transparencySortAxis = Vector3.up;
+
+            UniversalAdditionalCameraData camData = _cam.GetComponent<UniversalAdditionalCameraData>();
+            if (camData == null)
+            {
+                camData = _cam.gameObject.AddComponent<UniversalAdditionalCameraData>();
+            }
+            camData.renderPostProcessing = true;
+            camData.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
+            camData.antialiasingQuality = AntialiasingQuality.High;
 
             _cameraFocus = new Vector3((MinX + MaxX) * 0.5f, 0f, (MinZ + MaxZ) * 0.5f + 0.75f);
             UpdateCameraPosition();
@@ -226,28 +240,35 @@ namespace DemoRicochet
             rimMat.SetFloat("_Rim", 0f);
             rimMat.SetFloat("_ReceiveProjectileLights", 0f);
 
-            Vector3 horizRim = new Vector3(width + cfg.rimWidth, cfg.rimWidth, cfg.rimWidth);
-            Vector3 vertRim = new Vector3(cfg.rimWidth, cfg.rimWidth, depth + cfg.rimWidth);
+            float arenaScale = Mathf.Max(1f, width / DefaultWidth);
+            float rimThickness = cfg.rimWidth * arenaScale * 1.25f;
+            Vector3 horizRim = new Vector3(width + rimThickness, rimThickness, rimThickness);
+            Vector3 vertRim = new Vector3(rimThickness, rimThickness, depth + rimThickness);
             SpawnVisualCube("RimFront", envRoot, new Vector3(centerX, cfg.rimHeight, MinZ), horizRim, rimMat);
             SpawnVisualCube("RimRear", envRoot, new Vector3(centerX, cfg.rimHeight, MaxZ), horizRim, rimMat);
             SpawnVisualCube("RimLeft", envRoot, new Vector3(MinX, cfg.rimHeight, centerZ), vertRim, rimMat);
             SpawnVisualCube("RimRight", envRoot, new Vector3(MaxX, cfg.rimHeight, centerZ), vertRim, rimMat);
-            SpawnVisualCube("RimLeftAccent", envRoot, new Vector3(MinX - 2.3f, cfg.rimHeight, centerZ), new Vector3(4.6f, 0.08f, 0.08f), rimMat);
-            SpawnVisualCube("RimRightAccent", envRoot, new Vector3(MaxX + 2.3f, cfg.rimHeight, centerZ), new Vector3(4.6f, 0.08f, 0.08f), rimMat);
+            SpawnVisualCube("RimLeftAccent", envRoot, new Vector3(MinX - 2.3f, cfg.rimHeight, centerZ), new Vector3(4.6f, 0.08f * arenaScale, 0.08f * arenaScale), rimMat);
+            SpawnVisualCube("RimRightAccent", envRoot, new Vector3(MaxX + 2.3f, cfg.rimHeight, centerZ), new Vector3(4.6f, 0.08f * arenaScale, 0.08f * arenaScale), rimMat);
 
             if (cfg.washes != null && ground != null)
             {
                 for (int i = 0; i < cfg.washes.Length; i++)
                 {
                     WashData w = cfg.washes[i];
-                    Material washMat = new Material(ground) { name = "FloorWash_" + i };
+                    Material washMat = new Material(ground) { name = "FloorWash_" + i, renderQueue = 2990 };
                     washMat.SetFloat("_Mode", 0f);
                     Color washColor = ToColor(w.color).linear * w.strength;
                     washColor.a = 1f;
                     washMat.SetVector("_Color", washColor);
 
                     GameObject quad = NeonVisuals.CreateEffectQuad("FloorWash", surroundRoot, washMat);
-                    quad.transform.localPosition = ToVec3(w.position);
+                    Vector3 washPos = ToVec3(w.position);
+                    if (washPos.y > -0.5f)
+                    {
+                        washPos.y = 0.004f + i * 0.001f;
+                    }
+                    quad.transform.localPosition = washPos;
                     quad.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
                     quad.transform.localScale = new Vector3(w.size[0], w.size[1], 1f);
                 }
