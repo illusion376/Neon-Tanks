@@ -21,6 +21,7 @@ namespace DemoRicochet
         private const string ExtrasPath = "NeonTanks/Audio/SFX/Extras/";
         private const string MusicPath = "NeonTanks/Audio/Music/bgm_arena_loop";
         private const int PoolSize = 24;
+        private const string SfxVolumeKey = "NeonTanks.SfxVolume";
 
         [Header("Громкость")]
         [Range(0f, 1f)] public float masterVolume = 1f;
@@ -40,11 +41,25 @@ namespace DemoRicochet
         private readonly Dictionary<string, float> _lastPlayTime = new Dictionary<string, float>();
         private AudioSource[] _pool;
         private float[] _poolStartTime;
+        private readonly float[] _poolVolumes = new float[PoolSize];
         private AudioSource _music;
         private float _listenerCheckTimer;
 
         /// <summary>Итоговая громкость эффектов (для лупов двигателей).</summary>
         public static float SfxVolume => _instance != null ? _instance.masterVolume * _instance.sfxVolume : 0f;
+
+        public static float EffectsVolume => EnsureInstance() ? _instance.sfxVolume : 0.78f;
+
+        public static void SetEffectsVolume(float volume)
+        {
+            if (!EnsureInstance()) return;
+            _instance.sfxVolume = Mathf.Clamp01(volume);
+            for (int i = 0; i < _instance._pool.Length; i++)
+            {
+                _instance._pool[i].volume = _instance._poolVolumes[i] * SfxVolume;
+            }
+            PlayerPrefs.SetFloat(SfxVolumeKey, _instance.sfxVolume);
+        }
 
         // Сколько копий одного звука может звучать одновременно (иначе с тройным выстрелом будет каша)
         private static readonly Dictionary<string, int> VoiceLimit = new Dictionary<string, int>
@@ -87,6 +102,7 @@ namespace DemoRicochet
                 return;
             }
             _instance = this;
+            sfxVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(SfxVolumeKey, sfxVolume));
 
             _pool = new AudioSource[PoolSize];
             _poolStartTime = new float[PoolSize];
@@ -122,6 +138,11 @@ namespace DemoRicochet
             src.spatialBlend = 0f;   // камера смотрит сверху — используем стереопанораму, а не 3D-затухание
             src.dopplerLevel = 0f;
             return src;
+        }
+
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused) PlayerPrefs.Save();
         }
 
         private void Update()
@@ -221,7 +242,8 @@ namespace DemoRicochet
             AudioSource src = _pool[slot];
             src.Stop();
             src.clip = clip;
-            src.volume = Mathf.Clamp01(volume) * masterVolume * sfxVolume;
+            _poolVolumes[slot] = Mathf.Clamp01(volume);
+            src.volume = _poolVolumes[slot] * masterVolume * sfxVolume;
             src.pitch = pitch;
             src.panStereo = worldPos.HasValue ? PanFor(worldPos.Value) : 0f;
             if (delay > 0f) src.PlayDelayed(delay); else src.Play();

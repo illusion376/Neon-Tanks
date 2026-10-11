@@ -3,7 +3,7 @@ using UnityEngine.Rendering;
 
 namespace DemoRicochet
 {
-    // Оболочка щита, сканирование ремонта и следы от гусениц живут вместе с танком.
+    // Щит, сканирование ремонта, следы и неоновое дуло живут вместе с танком.
     public class TankPickupEffects : MonoBehaviour
     {
         private const float RepairDuration = 1.1f;
@@ -11,8 +11,6 @@ namespace DemoRicochet
         private static readonly Color RepairColor = new Color(0.18f, 1f, 0.52f);
         private static readonly Color SpeedColor = new Color(0.18f, 1f, 0.80f);
         private static readonly Color RapidFireColor = new Color(1f, 0.76f, 0.12f);
-
-        public Material RapidFireIconMaterial => _rapidIconMat;
 
         private TankHealth _health;
         private Rigidbody _body;
@@ -23,14 +21,15 @@ namespace DemoRicochet
         private Material _ringMat;
         private Material _softMat;
         private Material _trailMat;
-        private Material _rapidIconMat;
         private ParticleSystem _repairScan;
         private ParticleSystem _repairRings;
         private ParticleSystem _pickupBurst;
-        private ParticleSystem _rapidFireAura;
         private ParticleSystem _rapidFireShot;
         private Transform _turret;
         private Transform _muzzle;
+        private Renderer[] _barrelRenderers;
+        private Material[][] _barrelMaterials;
+        private MaterialPropertyBlock _barrelBlock;
         private bool _rapidFireActive;
         private readonly Transform[] _tracks = new Transform[2];
         private readonly Vector3[] _trackOffsets = new Vector3[2];
@@ -61,7 +60,6 @@ namespace DemoRicochet
             _softMat = CreateMaterial(groundShader, "PickupSoftGlowMat", 0f, Color.white, 3f);
             _trailMat = CreateMaterial(groundShader, "SpeedTrailMat", 6f, SpeedColor, 3f);
             _trailMat.SetFloat("_DashFill", 0.62f);
-            _rapidIconMat = CreateMaterial(pickupShader, "RapidFireIconMat", 2f, RapidFireColor, 4f);
 
             BuildShield();
             BuildRepair();
@@ -128,6 +126,14 @@ namespace DemoRicochet
             {
                 if (parts[i].name.EndsWith("__TurretPivot")) _turret = parts[i];
                 if (parts[i].name.EndsWith("__Muzzle")) _muzzle = parts[i];
+                if (parts[i].name.EndsWith("__BarrelRecoil"))
+                {
+                    _barrelRenderers = parts[i].GetComponentsInChildren<Renderer>();
+                    _barrelMaterials = new Material[_barrelRenderers.Length][];
+                    _barrelBlock = new MaterialPropertyBlock();
+                    for (int r = 0; r < _barrelRenderers.Length; r++)
+                        _barrelMaterials[r] = _barrelRenderers[r].sharedMaterials;
+                }
                 if (parts[i].name.EndsWith("__TrackLeftMesh")) _tracks[0] = parts[i];
                 if (parts[i].name.EndsWith("__TrackRightMesh")) _tracks[1] = parts[i];
             }
@@ -179,25 +185,6 @@ namespace DemoRicochet
 
         private void BuildRapidFire()
         {
-            _rapidFireAura = CreateParticles("RapidFireCharge", _softMat, 24, 0.65f);
-            var main = _rapidFireAura.main;
-            main.loop = true;
-            main.cullingMode = ParticleSystemCullingMode.AlwaysSimulate;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(0.4f, 0.65f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.035f, 0.065f);
-            main.startColor = RapidFireColor.linear;
-            var emission = _rapidFireAura.emission;
-            emission.enabled = true;
-            emission.rateOverTime = 20f;
-            var shape = _rapidFireAura.shape;
-            shape.enabled = true;
-            shape.shapeType = ParticleSystemShapeType.Circle;
-            shape.radius = 0.34f;
-            shape.rotation = new Vector3(90f, 0f, 0f);
-            var velocity = _rapidFireAura.velocityOverLifetime;
-            velocity.enabled = true;
-            velocity.y = 0.55f;
-
             _rapidFireShot = CreateParticles("RapidFireMuzzleFlare", _softMat, 9, 0.18f);
             var shotMain = _rapidFireShot.main;
             shotMain.simulationSpace = ParticleSystemSimulationSpace.World;
@@ -270,17 +257,13 @@ namespace DemoRicochet
                 _scanMat.SetFloat("_EffectTime", _repairElapsed);
             }
 
-            if (_rapidFireAura != null)
+            bool rapidActive = _health.HasRapidFire;
+            if (rapidActive || _rapidFireActive)
             {
-                _rapidFireAura.transform.position = (_turret != null ? _turret.position : transform.position) + Vector3.up * 0.28f;
-                bool rapidActive = _health.HasRapidFire;
-                if (_rapidFireActive != rapidActive)
-                {
-                    _rapidFireActive = rapidActive;
-                    if (rapidActive) _rapidFireAura.Play();
-                    else _rapidFireAura.Stop(true, ParticleSystemStopBehavior.StopEmitting);
-                }
+                float glow = rapidActive ? 4f + Mathf.Sin(Time.time * 5f) * 0.35f : 0f;
+                SetBarrelGlow(glow, _health.HitFlashStrength * 2.2f);
             }
+            _rapidFireActive = rapidActive;
 
             bool speedActive = _health.speedBoostTimer > 0f;
             _speedVisibility = Mathf.MoveTowards(_speedVisibility, speedActive ? 1f : 0f, dt * 5f);
@@ -298,6 +281,31 @@ namespace DemoRicochet
                 _trackGlows[i].position = position;
                 _trackGlows[i].gameObject.SetActive(_speedVisibility > 0f);
                 _glowRenderers[i].SetPropertyBlock(_glowBlock);
+            }
+        }
+
+        private void SetBarrelGlow(float strength, float hitFlash)
+        {
+            if (_barrelRenderers == null) return;
+            Color gold = RapidFireColor.linear;
+            Vector4 glow = new Vector4(gold.r, gold.g, gold.b, 0f);
+            Vector4 flash = new Vector4(hitFlash, hitFlash, hitFlash, 0f);
+            for (int r = 0; r < _barrelRenderers.Length; r++)
+            {
+                Renderer renderer = _barrelRenderers[r];
+                if (renderer == null) continue;
+                for (int m = 0; m < _barrelMaterials[r].Length; m++)
+                {
+                    Material material = _barrelMaterials[r][m];
+                    if (material == null || !material.HasProperty("_EmissionColor")) continue;
+                    Vector4 original = material.GetVector("_EmissionColor");
+                    bool neon = Mathf.Max(original.x, Mathf.Max(original.y, original.z)) > 1f;
+                    Vector4 emission = strength > 0f
+                        ? original * 0.15f + glow * strength * (neon ? 1f : 0.12f) : original;
+                    renderer.GetPropertyBlock(_barrelBlock, m);
+                    _barrelBlock.SetVector("_EmissionColor", emission + flash);
+                    renderer.SetPropertyBlock(_barrelBlock, m);
+                }
             }
         }
 
@@ -396,11 +404,11 @@ namespace DemoRicochet
             _speedVisibility = 0f;
             _repairElapsed = RepairDuration;
             _rapidFireActive = false;
+            SetBarrelGlow(0f, 0f);
             if (_shield != null) _shield.gameObject.SetActive(false);
             if (_repairScan != null) _repairScan.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             if (_repairRings != null) _repairRings.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             if (_pickupBurst != null) _pickupBurst.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-            if (_rapidFireAura != null) _rapidFireAura.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             if (_rapidFireShot != null) _rapidFireShot.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             for (int i = 0; i < _trails.Length; i++)
             {
@@ -423,7 +431,6 @@ namespace DemoRicochet
             if (_ringMat != null) Destroy(_ringMat);
             if (_softMat != null) Destroy(_softMat);
             if (_trailMat != null) Destroy(_trailMat);
-            if (_rapidIconMat != null) Destroy(_rapidIconMat);
         }
     }
 }
