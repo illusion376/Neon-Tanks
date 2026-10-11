@@ -27,7 +27,6 @@ namespace DemoRicochet
         private Transform _turretPivot;
         private Transform _barrelRecoil;
         private Transform _muzzlePoint;
-        private Transform _ringTransform;
         private Transform _shadowTransform;
 
         private Quaternion _hullBasis;
@@ -145,15 +144,6 @@ namespace DemoRicochet
                 glowQuad.transform.localPosition = new Vector3(0f, 0.028f, 0f);
                 glowQuad.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
                 glowQuad.transform.localScale = new Vector3(2.8f, 2.8f, 1f);
-
-                Material ringMat = new Material(groundShader) { name = "EnemyTeamRing" };
-                ringMat.SetFloat("_Mode", 1f);
-                ringMat.SetVector("_Color", magentaTint.linear * 1.6f);
-                GameObject ringQuad = NeonVisuals.CreateEffectQuad("TeamRing", transform, ringMat);
-                ringQuad.transform.localPosition = new Vector3(0f, 0.035f, 0f);
-                ringQuad.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-                ringQuad.transform.localScale = new Vector3(1.85f, 1.85f, 1f);
-                _ringTransform = ringQuad.transform;
             }
         }
 
@@ -581,10 +571,6 @@ namespace DemoRicochet
                 }
             }
 
-            if (_ringTransform != null)
-            {
-                _ringTransform.localRotation = Quaternion.Euler(90f, Time.time * 18f, 0f);
-            }
         }
 
         private static Transform FindBySuffix(Transform root, string suffix)
