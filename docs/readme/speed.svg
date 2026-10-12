@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="100"
+   height="100"
+   viewBox="0 0 100 100"
+   role="img"
+   aria-label="Ускорение"
+   version="1.1"
+   id="svg31"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <title
+     id="title2">Ускорение</title>
+  <defs
+     id="defs19">
+    <linearGradient
+       id="accent"
+       x1="0"
+       x2="1">
+      <stop
+         stop-color="#9257ff"
+         id="stop4" />
+      <stop
+         offset="1"
+         stop-color="#d7b5ff"
+         id="stop6" />
+    </linearGradient>
+    <linearGradient
+       id="fade"
+       gradientUnits="userSpaceOnUse"
+       x1="24"
+       y1="18"
+       x2="976"
+       y2="18">
+      <stop
+         stop-color="#a56aff"
+         stop-opacity="0"
+         id="stop9" />
+      <stop
+         offset=".5"
+         stop-color="#bb8bff"
+         id="stop11" />
+      <stop
+         offset="1"
+         stop-color="#a56aff"
+         stop-opacity="0"
+         id="stop13" />
+    </linearGradient>
+    <filter
+       id="glow"
+       x="-0.23720241"
+       y="-0.16189217"
+       width="1.4744045"
+       height="1.3237821">
+      <feGaussianBlur
+         stdDeviation="3"
+         id="feGaussianBlur16" />
+    </filter>
+  </defs>
+  <rect
+     x="3"
+     y="3"
+     width="94"
+     height="94"
+     rx="21"
+     fill="#11111d"
+     stroke="#2effcc"
+     stroke-opacity=".35"
+     id="rect21" />
+  <g
+     fill="none"
+     stroke="#2effcc"
+     stroke-width="6"
+     stroke-linejoin="round"
+     stroke-linecap="round"
+     filter="url(#glow)"
+     opacity="0.45"
+     id="g25">
+    <path
+       d="M 55,19 29,54 H 48 L 42,82 72,43 H 52 Z"
+       id="path23" />
+  </g>
+  <g
+     fill="none"
+     stroke="#2effcc"
+     stroke-width="3"
+     stroke-linejoin="round"
+     stroke-linecap="round"
+     id="g29">
+    <path
+       d="M 55,19 29,54 H 48 L 42,82 72,43 H 52 Z"
+       id="path27" />
+  </g>
+</svg>
