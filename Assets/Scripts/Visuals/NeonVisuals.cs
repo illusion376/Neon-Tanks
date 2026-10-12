@@ -124,6 +124,7 @@ namespace DemoRicochet
         {
             EnsureInitialized();
             Vector4 bounds = new Vector4(minX, maxX, minZ, maxZ);
+            
             foreach (Material mat in _materials.Values)
             {
                 if (mat != null)

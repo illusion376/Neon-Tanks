@@ -18,7 +18,7 @@ namespace DemoRicochet
         public float respawnDelay = 8.0f;
         public float pickupRadius = 0.95f;
         public bool cycleTypeOnRespawn = false;
-        [Tooltip("Подбирает только игрок (враги проезжают мимо)")]
+        [Tooltip("Подбирает только игрок")]
         public bool playerOnly = false;
 
         private Transform _modelTransform;
@@ -53,6 +53,7 @@ namespace DemoRicochet
             go.transform.position = new Vector3(position.x, 0f, position.z);
             PickupItem item = go.AddComponent<PickupItem>();
             item.Initialize(type);
+            
             return item;
         }
 
@@ -75,7 +76,9 @@ namespace DemoRicochet
         private void RebuildVisuals()
         {
             NeonVisuals.EnsureInitialized();
+            
             if (_haloMat != null) Destroy(_haloMat);
+            
             if (_glowMat != null) Destroy(_glowMat);
 
             for (int i = transform.childCount - 1; i >= 0; i--)
@@ -98,6 +101,7 @@ namespace DemoRicochet
             }
 
             Shader groundShader = NeonVisuals.GroundShader;
+            
             if (groundShader != null)
             {
                 _haloMat = new Material(groundShader) { name = "PickupHaloMat", renderQueue = 3009 };
@@ -125,7 +129,9 @@ namespace DemoRicochet
         private GameObject BuildRapidFireModel()
         {
             Shader shader = Resources.Load<Shader>("Shaders/NeonPickup");
+            
             if (shader == null) return NeonVisuals.InstantiateModel("Pickups/NT_Pickup_RapidFire", transform, "PickupMesh");
+            
             if (_rapidIconMat == null)
             {
                 _rapidIconMat = new Material(shader) { name = "RapidFirePickupIconMat" };
@@ -136,6 +142,7 @@ namespace DemoRicochet
 
             GameObject model = new GameObject("PickupMesh");
             model.transform.SetParent(transform, false);
+            
             for (int i = 0; i < 2; i++)
             {
                 GameObject disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -155,6 +162,7 @@ namespace DemoRicochet
             icon.transform.localPosition = Vector3.up * 0.104f;
             icon.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
             icon.transform.localScale = new Vector3(0.83f, 0.83f, 1f);
+            
             return model;
         }
 
@@ -173,6 +181,7 @@ namespace DemoRicochet
             }
 
             float t = Time.time;
+            
             if (_modelTransform != null)
             {
                 float hoverY = 0.17f + Mathf.Sin(t * 2.6f + _phaseOffset) * 0.055f;
@@ -191,17 +200,22 @@ namespace DemoRicochet
         private void CheckTankCollection()
         {
             TankHealth[] tanks = FindObjectsByType<TankHealth>();
+            
             float rSqr = pickupRadius * pickupRadius;
+            
             Vector3 myPos = transform.position;
 
             for (int i = 0; i < tanks.Length; i++)
             {
                 TankHealth tank = tanks[i];
+                
                 if (tank == null || tank.IsDead) continue;
+                
                 if (playerOnly && tank.GetComponent<SimpleBoxTank>() == null) continue;
 
                 float dx = tank.transform.position.x - myPos.x;
                 float dz = tank.transform.position.z - myPos.z;
+                
                 if (dx * dx + dz * dz <= rSqr)
                 {
                     CollectBy(tank);
@@ -287,8 +301,10 @@ namespace DemoRicochet
                 for (int i = 0; i < shared.Length; i++)
                 {
                     if (shared[i] == null || !shared[i].HasProperty(_emissionId)) continue;
+                    
                     Vector4 baseEm = shared[i].GetVector(_emissionId);
                     bool isNeonSlot = Mathf.Max(baseEm.x, Mathf.Max(baseEm.y, baseEm.z)) > 1.0f;
+                    
                     if (isNeonSlot)
                     {
                         rend.GetPropertyBlock(_emissionBlock, i);
@@ -326,7 +342,9 @@ namespace DemoRicochet
         private void OnDestroy()
         {
             if (_haloMat != null) Destroy(_haloMat);
+            
             if (_glowMat != null) Destroy(_glowMat);
+            
             if (_rapidIconMat != null) Destroy(_rapidIconMat);
         }
     }

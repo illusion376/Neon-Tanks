@@ -6,24 +6,16 @@ namespace DemoRicochet
     /// <summary>
     /// Звук игры. Создаётся сам при запуске (как и остальные системы проекта), переживает
     /// перезагрузку сцены между уровнями, поэтому музыка не обрывается.
-    ///
-    /// Клипы лежат в Assets/Resources/NeonTanks/Audio/:
-    ///   SFX/         — звуки по ТЗ (sfx_*.wav)
-    ///   SFX/Extras/  — дополнительные звуки
-    ///   Music/       — bgm_arena_loop.ogg
-    ///
-    /// Вызывать из кода: NeonAudio.Play("sfx_tank_hit", worldPos) или готовые методы ниже
-    /// (ShootPlayer, Ricochet, TankHit и т.д.). Если какого-то файла нет — тихо пропускается.
     /// </summary>
     public class NeonAudio : MonoBehaviour
     {
         private const string SfxPath = "NeonTanks/Audio/SFX/";
         private const string ExtrasPath = "NeonTanks/Audio/SFX/Extras/";
         private const string MusicPath = "NeonTanks/Audio/Music/bgm_arena_loop";
-        private const int PoolSize = 24;
         private const string SfxVolumeKey = "NeonTanks.SfxVolume";
         private const string MusicVolumeKey = "NeonTanks.MusicVolume";
-
+        private const int PoolSize = 24;
+        
         [Header("Громкость")]
         [Range(0f, 1f)] public float masterVolume = 0.5f;
         [Tooltip("Громкость всех эффектов, включая гул двигателей (музыка — отдельно)")]
@@ -56,11 +48,14 @@ namespace DemoRicochet
         public static void SetEffectsVolume(float volume)
         {
             if (!EnsureInstance()) return;
+            
             _instance.sfxVolume = Mathf.Clamp01(volume);
+            
             for (int i = 0; i < _instance._pool.Length; i++)
             {
                 _instance._pool[i].volume = _instance._poolVolumes[i] * SfxVolume;
             }
+            
             PlayerPrefs.SetFloat(SfxVolumeKey, _instance.sfxVolume);
         }
 
@@ -69,10 +64,13 @@ namespace DemoRicochet
         public static void SetMusicVolume(float volume)
         {
             if (!EnsureInstance()) return;
+            
             _instance.musicVolume = Mathf.Clamp01(volume);
+            
             if (_instance._music != null)
             {
                 float target = _instance.MusicTargetVolume();
+                
                 if (_instance.musicVolume <= 0.001f)
                 {
                     _instance._music.volume = 0f;
@@ -80,20 +78,26 @@ namespace DemoRicochet
                 else
                 {
                     _instance._music.volume = target;
+                    
                     if (!_instance._music.isPlaying && _instance._music.clip != null)
                     {
                         _instance._music.Play();
                     }
                 }
             }
+            
             PlayerPrefs.SetFloat(MusicVolumeKey, _instance.musicVolume);
         }
 
         public static void StopEffects()
         {
             if (_instance == null) return;
+
             for (int i = 0; i < _instance._pool.Length; i++)
+            { 
                 _instance._pool[i].Stop();
+            }
+            
             _instance._lastPlayTime.Clear();
         }
 
@@ -137,12 +141,14 @@ namespace DemoRicochet
                 Destroy(gameObject);
                 return;
             }
+            
             _instance = this;
             sfxVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(SfxVolumeKey, sfxVolume));
             musicVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(MusicVolumeKey, musicVolume));
 
             _pool = new AudioSource[PoolSize];
             _poolStartTime = new float[PoolSize];
+            
             for (int i = 0; i < PoolSize; i++)
             {
                 _pool[i] = CreateSource("Sfx_" + i);
@@ -152,6 +158,7 @@ namespace DemoRicochet
             _music.loop = true;
             _music.priority = 0;
             AudioClip musicClip = Resources.Load<AudioClip>(MusicPath);
+            
             if (musicClip != null)
             {
                 _music.clip = musicClip;
@@ -172,7 +179,7 @@ namespace DemoRicochet
             child.transform.SetParent(transform, false);
             AudioSource src = child.AddComponent<AudioSource>();
             src.playOnAwake = false;
-            src.spatialBlend = 0f;   // камера смотрит сверху — используем стереопанораму, а не 3D-затухание
+            src.spatialBlend = 0f;
             src.dopplerLevel = 0f;
             return src;
         }
@@ -204,6 +211,7 @@ namespace DemoRicochet
 
             // Камеру может создать SimpleArenaBuilder уже после старта — проверяем слушателя раз в секунду
             _listenerCheckTimer -= Time.unscaledDeltaTime;
+            
             if (_listenerCheckTimer <= 0f)
             {
                 _listenerCheckTimer = 1f;
@@ -214,7 +222,9 @@ namespace DemoRicochet
         private static void EnsureAudioListener()
         {
             if (FindAnyObjectByType<AudioListener>() != null) return;
+            
             Camera cam = Camera.main;
+            
             if (cam != null)
             {
                 cam.gameObject.AddComponent<AudioListener>();
@@ -226,25 +236,32 @@ namespace DemoRicochet
         private static bool EnsureInstance()
         {
             if (_instance == null && Application.isPlaying) Bootstrap();
+            
             return _instance != null;
         }
 
         public static AudioClip GetClip(string clipName)
         {
             if (!EnsureInstance() || string.IsNullOrEmpty(clipName)) return null;
+            
             if (_instance._clips.TryGetValue(clipName, out AudioClip cached)) return cached;
+            
             if (_instance._missing.Contains(clipName)) return null;
 
             AudioClip clip = Resources.Load<AudioClip>(SfxPath + clipName);
+            
             if (clip == null) clip = Resources.Load<AudioClip>(ExtrasPath + clipName);
 
             if (clip == null)
             {
                 _instance._missing.Add(clipName);
                 Debug.LogWarning("[NeonAudio] Звук не найден: " + clipName);
+                
                 return null;
             }
+            
             _instance._clips[clipName] = clip;
+            
             return clip;
         }
 
@@ -253,12 +270,14 @@ namespace DemoRicochet
             float delay = 0f, float minInterval = 0.02f)
         {
             if (!EnsureInstance()) return;
+            
             _instance.PlayInternal(clipName, volume, pitch, worldPos, delay, minInterval);
         }
 
         private void PlayInternal(string clipName, float volume, float pitch, Vector3? worldPos, float delay, float minInterval)
         {
             AudioClip clip = GetClip(clipName);
+            
             if (clip == null) return;
 
             // Защита от «пулемёта» одинаковых звуков в один кадр
@@ -268,19 +287,22 @@ namespace DemoRicochet
             int limit = VoiceLimit.TryGetValue(clipName, out int l) ? l : 6;
             int playing = 0;
             int oldestSame = -1;
+            
             for (int i = 0; i < _pool.Length; i++)
             {
                 if (_pool[i].isPlaying && _pool[i].clip == clip)
                 {
                     playing++;
+                    
                     if (oldestSame < 0 || _poolStartTime[i] < _poolStartTime[oldestSame]) oldestSame = i;
                 }
             }
 
             int slot;
+            
             if (playing >= limit && oldestSame >= 0)
             {
-                slot = oldestSame;               // заменяем самую старую копию этого же звука
+                slot = oldestSame;
             }
             else
             {
@@ -294,6 +316,7 @@ namespace DemoRicochet
             src.volume = _poolVolumes[slot] * masterVolume * sfxVolume;
             src.pitch = pitch;
             src.panStereo = worldPos.HasValue ? PanFor(worldPos.Value) : 0f;
+            
             if (delay > 0f) src.PlayDelayed(delay); else src.Play();
 
             _poolStartTime[slot] = now + delay;
@@ -303,11 +326,14 @@ namespace DemoRicochet
         private int FindFreeSlot()
         {
             int oldest = 0;
+            
             for (int i = 0; i < _pool.Length; i++)
             {
                 if (!_pool[i].isPlaying) return i;
+                
                 if (_poolStartTime[i] < _poolStartTime[oldest]) oldest = i;
             }
+            
             return oldest;
         }
 
@@ -315,16 +341,17 @@ namespace DemoRicochet
         public static float PanFor(Vector3 worldPos)
         {
             Camera cam = Camera.main;
+            
             if (cam == null || _instance == null) return 0f;
+            
             Vector3 vp = cam.WorldToViewportPoint(worldPos);
+            
             return Mathf.Clamp((vp.x - 0.5f) * 2f, -1f, 1f) * _instance.stereoWidth;
         }
 
         private static float Vary(float amount = 0.05f) => Random.Range(1f - amount, 1f + amount);
 
         // ------------------------------------------------------------------ события игры
-
-        // Стрельба
         public static void ShootPlayer(bool rapid, Vector3 pos)
         {
             if (rapid) Play("sfx_shoot_rapid", 0.85f, Vary(0.04f), pos);
@@ -334,6 +361,7 @@ namespace DemoRicochet
         public static void ShootEnemy(bool isTurret, bool ricochetShots, Vector3 pos)
         {
             string clip = !isTurret ? "sfx_enemy_shoot" : (ricochetShots ? "sfx_turret_ricochet_shoot" : "sfx_turret_shoot");
+            
             Play(clip, 0.6f, Vary(), pos);
         }
 
@@ -370,6 +398,7 @@ namespace DemoRicochet
             if (isPlayer)
             {
                 Play("sfx_tank_explode", 1f, 1f, pos);
+                
                 if (hasLivesLeft) Play("sfx_life_lost", 0.65f, 1f, null, 0.65f);
             }
             else
@@ -399,6 +428,7 @@ namespace DemoRicochet
                 case PickupType.RapidFire: clip = "sfx_pickup_rapid"; break;
                 default: clip = "sfx_pickup_take"; break;
             }
+            
             Play(clip, byPlayer ? 0.85f : 0.4f, 1f, pos);
         }
 
@@ -408,6 +438,7 @@ namespace DemoRicochet
         public static void BlockCrack(int healthLeft, int maxHealth, Vector3 pos)
         {
             float damage = maxHealth > 0 ? 1f - (float)healthLeft / maxHealth : 0f;
+            
             Play("sfx_block_crack", 0.65f, 1f + 0.2f * damage, pos);
         }
 

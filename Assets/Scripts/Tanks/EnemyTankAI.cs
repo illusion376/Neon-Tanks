@@ -109,6 +109,7 @@ namespace DemoRicochet
             bool isTurret = moveSpeed <= 0f;
             string modelPath = isTurret ? "Tanks/NT_Turret_Magenta" : "Tanks/NT_Tank_Magenta";
             GameObject modelWrapper = NeonVisuals.InstantiateModel(modelPath, transform, "TankModel", false);
+            
             if (modelWrapper == null) return;
 
             _hullTransform = modelWrapper.transform;
@@ -122,6 +123,7 @@ namespace DemoRicochet
             {
                 Vector3 nativeForward = _muzzlePoint.position - _turretPivot.position;
                 nativeForward.y = 0f;
+                
                 if (nativeForward.sqrMagnitude < 0.0001f) nativeForward = Vector3.forward;
 
                 float offsetAngle = -Mathf.Atan2(nativeForward.x, nativeForward.z) * Mathf.Rad2Deg;
@@ -138,6 +140,7 @@ namespace DemoRicochet
 
             Vector2 shadowSize = isTurret ? new Vector2(1.75f, 1.75f) : new Vector2(1.65f, 1.85f);
             GameObject shadowObj = NeonVisuals.CreateContactShadow(transform, shadowSize, 0.62f);
+            
             if (shadowObj != null)
             {
                 _shadowTransform = shadowObj.transform;

@@ -19,6 +19,7 @@ namespace DemoRicochet
         private void Awake()
         {
             Transform model = transform.Find("Model");
+            
             if (model != null)
             {
                 bool? cyan = tint == TeamTint.AsInModel ? (bool?)null : tint == TeamTint.Cyan;

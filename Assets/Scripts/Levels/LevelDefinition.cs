@@ -56,13 +56,16 @@ namespace DemoRicochet
             Gizmos.DrawWireSphere(spawn + Vector3.up * 0.5f, 0.62f);
 
             Gizmos.color = new Color(1f, 0.2f, 0.6f);
+            
             foreach (EnemyTankAI enemy in GetComponentsInChildren<EnemyTankAI>())
             {
                 Gizmos.DrawWireSphere(enemy.transform.position + Vector3.up * 0.5f, 0.62f);
+                
                 if (enemy.moveSpeed > 0f) DrawCircle(enemy.transform.position, 1.2f);
             }
 
             Gizmos.color = new Color(0.4f, 1f, 0.4f);
+            
             foreach (PickupItem pickup in GetComponentsInChildren<PickupItem>())
             {
                 Gizmos.DrawWireCube(pickup.transform.position + Vector3.up * 0.3f, Vector3.one * 0.5f);
@@ -72,7 +75,9 @@ namespace DemoRicochet
         private static void DrawCircle(Vector3 center, float radius)
         {
             const int segments = 32;
+            
             Vector3 prev = center + new Vector3(radius, 0.05f, 0f);
+            
             for (int i = 1; i <= segments; i++)
             {
                 float a = i * Mathf.PI * 2f / segments;

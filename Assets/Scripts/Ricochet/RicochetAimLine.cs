@@ -66,6 +66,7 @@ namespace DemoRicochet
             }
 
             _tank = GetComponent<SimpleBoxTank>();
+            
             if (_tank != null)
             {
                 _tankCollider = _tank.GetComponent<Collider>();
@@ -81,6 +82,7 @@ namespace DemoRicochet
             if (shader == null)
             {
                 enabled = false;
+                
                 return;
             }
 
@@ -203,8 +205,11 @@ namespace DemoRicochet
             _points.Add(origin);
 
             float remainingLength = maxTotalLength;
+            
             Collider lastBouncedWall = null;
+            
             bool hasBounce = false;
+            
             Vector3 bouncePoint = Vector3.zero;
 
             for (int bounce = 0; bounce <= MaxReflections && remainingLength > 0.001f; bounce++)
@@ -248,6 +253,7 @@ namespace DemoRicochet
             }
 
             bool startsWithBounce = hasBounce && (_points[0] - bouncePoint).sqrMagnitude <= 0.000025f;
+            
             if (_points.Count >= 2 && !startsWithBounce)
             {
                 _line.positionCount = 2;
@@ -260,6 +266,7 @@ namespace DemoRicochet
             }
 
             int bounceStart = startsWithBounce ? 0 : 1;
+            
             if (hasBounce && _points.Count > bounceStart + 1)
             {
                 _bounceLine.positionCount = 2;
@@ -272,6 +279,7 @@ namespace DemoRicochet
             }
 
             _bounceMarker.SetActive(hasBounce);
+            
             if (hasBounce) _bounceMarker.transform.position = bouncePoint;
         }
 
@@ -283,7 +291,9 @@ namespace DemoRicochet
         private void OnDestroy()
         {
             if (_lineMaterial != null) Destroy(_lineMaterial);
+            
             if (_bounceMaterial != null) Destroy(_bounceMaterial);
+            
             if (_bounceMarkerMaterial != null) Destroy(_bounceMarkerMaterial);
         }
     }

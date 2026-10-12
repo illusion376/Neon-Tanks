@@ -51,6 +51,7 @@ namespace DemoRicochet
         private void OnDisable()
         {
             All.Remove(this);
+            
             Silence();
         }
 
@@ -60,9 +61,11 @@ namespace DemoRicochet
             _health = GetComponent<TankHealth>();
 
             AudioClip clip = NeonAudio.GetClip(clipName);
+            
             if (clip == null)
             {
                 enabled = false;
+                
                 return;
             }
 
@@ -74,6 +77,7 @@ namespace DemoRicochet
             _source.dopplerLevel = 0f;
             _source.volume = 0f;
             _source.Play();
+            
             // разные танки стартуют с разного места лупа, чтобы не гудеть в унисон
             _source.time = Random.Range(0f, clip.length * 0.9f);
         }
@@ -81,13 +85,16 @@ namespace DemoRicochet
         private void SetForcedPause(bool paused)
         {
             _forcedPause = paused;
+            
             if (paused) Silence();
         }
 
         private void Silence()
         {
             if (_source == null) return;
+            
             _source.volume = 0f;
+            
             if (_source.isPlaying) _source.Pause();
         }
 
@@ -96,15 +103,18 @@ namespace DemoRicochet
             if (_source == null) return;
 
             bool silent = _forcedPause || Time.timeScale < 0.01f || (_health != null && _health.IsDead);
+            
             if (silent)
             {
                 Silence();
+                
                 return;
             }
 
             if (!_source.isPlaying) _source.UnPause();
 
-            float speed = 0f;
+            var speed = 0f;
+            
             if (_rb != null)
             {
                 Vector3 v = _rb.linearVelocity;
@@ -114,6 +124,7 @@ namespace DemoRicochet
 
             float t = Mathf.Clamp01(speed / Mathf.Max(0.1f, fullSpeed));
             float targetVolume = t * maxVolume * NeonAudio.SfxVolume;
+            
             _source.volume = Mathf.MoveTowards(_source.volume, targetVolume, Time.unscaledDeltaTime * 1.5f);
             _source.pitch = Mathf.Lerp(minPitch, maxPitch, t);
             _source.panStereo = NeonAudio.PanFor(transform.position);

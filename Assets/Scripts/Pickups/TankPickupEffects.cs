@@ -45,10 +45,12 @@ namespace DemoRicochet
         public void Initialize(TankHealth health)
         {
             if (_root != null) return;
+            
             _health = health;
             _body = GetComponent<Rigidbody>();
             Shader pickupShader = Resources.Load<Shader>("Shaders/NeonPickup");
             Shader groundShader = NeonVisuals.GroundShader;
+            
             if (pickupShader == null || groundShader == null) return;
 
             _root = new GameObject("TankPickupEffects").transform;
@@ -75,6 +77,7 @@ namespace DemoRicochet
             Color linear = color.linear;
             material.SetFloat("_Mode", mode);
             material.SetVector("_Color", new Vector4(linear.r * intensity, linear.g * intensity, linear.b * intensity, 1f));
+            
             return material;
         }
 
@@ -82,15 +85,20 @@ namespace DemoRicochet
         {
             // В проекте уже есть купол нужной формы — используем его меш вместо трёх плоских колец.
             GameObject dome = NeonVisuals.InstantiateModel("EffectMeshes/NT_ShieldDome_Cyan", _root, "EnergyShield");
+            
             if (dome == null) return;
+            
             _shield = dome.transform;
             _shield.localPosition = Vector3.up * 0.025f;
             _shield.localScale = Vector3.one * 0.92f;
             Renderer[] renderers = dome.GetComponentsInChildren<Renderer>();
+            
             for (int i = 0; i < renderers.Length; i++)
             {
                 Material[] materials = renderers[i].sharedMaterials;
+                
                 for (int m = 0; m < materials.Length; m++) materials[m] = _shieldMat;
+                
                 renderers[i].sharedMaterials = materials;
                 DisableLighting(renderers[i]);
             }
@@ -105,7 +113,9 @@ namespace DemoRicochet
             Destroy(quad);
 
             _repairScan = CreateParticles("RepairScanColumns", _scanMat, 12, RepairDuration);
+            
             var scanMain = _repairScan.main;
+            
             scanMain.startSize3D = true;
             scanMain.startRotation3D = true;
             ParticleSystemRenderer scanRenderer = _repairScan.GetComponent<ParticleSystemRenderer>();
@@ -120,12 +130,16 @@ namespace DemoRicochet
         private void BuildTrackTrails()
         {
             Transform model = transform.Find("TankModel");
+            
             if (model == null) return;
+            
             Transform[] parts = model.GetComponentsInChildren<Transform>();
             for (int i = 0; i < parts.Length; i++)
             {
                 if (parts[i].name.EndsWith("__TurretPivot")) _turret = parts[i];
+                
                 if (parts[i].name.EndsWith("__Muzzle")) _muzzle = parts[i];
+                
                 if (parts[i].name.EndsWith("__BarrelRecoil"))
                 {
                     _barrelRenderers = parts[i].GetComponentsInChildren<Renderer>();
@@ -135,6 +149,7 @@ namespace DemoRicochet
                         _barrelMaterials[r] = _barrelRenderers[r].sharedMaterials;
                 }
                 if (parts[i].name.EndsWith("__TrackLeftMesh")) _tracks[0] = parts[i];
+                
                 if (parts[i].name.EndsWith("__TrackRightMesh")) _tracks[1] = parts[i];
             }
             Vector3 forward = _muzzle != null && _turret != null ? _muzzle.position - _turret.position : transform.forward;
@@ -147,8 +162,11 @@ namespace DemoRicochet
             for (int i = 0; i < _tracks.Length; i++)
             {
                 if (_tracks[i] == null) continue;
+                
                 MeshFilter filter = _tracks[i].GetComponent<MeshFilter>();
+                
                 if (filter == null || filter.sharedMesh == null) continue;
+                
                 Bounds bounds = filter.sharedMesh.bounds;
                 Vector3 localForward = _tracks[i].InverseTransformDirection(forward).normalized;
                 float halfLength = Vector3.Dot(bounds.extents,
@@ -186,7 +204,9 @@ namespace DemoRicochet
         private void BuildRapidFire()
         {
             _rapidFireShot = CreateParticles("RapidFireMuzzleFlare", _softMat, 9, 0.18f);
+            
             var shotMain = _rapidFireShot.main;
+            
             shotMain.simulationSpace = ParticleSystemSimulationSpace.World;
             ParticleSystemRenderer renderer = _rapidFireShot.GetComponent<ParticleSystemRenderer>();
             renderer.renderMode = ParticleSystemRenderMode.Stretch;
@@ -200,7 +220,9 @@ namespace DemoRicochet
             go.transform.SetParent(_root, false);
             ParticleSystem particles = go.AddComponent<ParticleSystem>();
             particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            
             var main = particles.main;
+            
             main.loop = false;
             main.playOnAwake = false;
             main.duration = lifetime;
@@ -208,15 +230,21 @@ namespace DemoRicochet
             main.startSpeed = 0f;
             main.maxParticles = count;
             main.simulationSpace = ParticleSystemSimulationSpace.Local;
+            
             var emission = particles.emission;
+            
             emission.enabled = false;
+            
             var shape = particles.shape;
+            
             shape.enabled = false;
 
             Gradient fade = new Gradient();
             fade.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
                 new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.08f), new GradientAlphaKey(0.8f, 0.5f), new GradientAlphaKey(0f, 1f) });
+            
             var color = particles.colorOverLifetime;
+            
             color.enabled = true;
             color.color = new ParticleSystem.MinMaxGradient(fade);
 
@@ -224,6 +252,7 @@ namespace DemoRicochet
             renderer.sharedMaterial = material;
             renderer.maxParticleSize = 1f;
             DisableLighting(renderer);
+            
             return particles;
         }
 
@@ -238,10 +267,15 @@ namespace DemoRicochet
         private void LateUpdate()
         {
             if (_root == null || _health == null || _health.IsDead) return;
+            
             float dt = Time.deltaTime;
+            
             _shieldPulse = Mathf.MoveTowards(_shieldPulse, 0f, dt * 3f);
+            
             bool shieldActive = _health.shieldCharges > 0 || _health.HasSpawnProtection || _shieldPulse > 0f;
+            
             _shieldVisibility = Mathf.MoveTowards(_shieldVisibility, shieldActive ? 1f : 0f, dt * 6f);
+            
             if (_shield != null)
             {
                 _shield.gameObject.SetActive(_shieldVisibility > 0f);
@@ -251,6 +285,7 @@ namespace DemoRicochet
                 _shieldMat.SetFloat("_Pulse", _shieldPulse);
                 _shieldMat.SetFloat("_EffectTime", Time.time);
             }
+            
             if (_repairElapsed < RepairDuration)
             {
                 _repairElapsed += dt;
@@ -258,22 +293,29 @@ namespace DemoRicochet
             }
 
             bool rapidActive = _health.HasRapidFire;
+            
             if (rapidActive || _rapidFireActive)
             {
                 float glow = rapidActive ? 4f + Mathf.Sin(Time.time * 5f) * 0.35f : 0f;
                 SetBarrelGlow(glow, _health.HitFlashStrength * 2.2f);
             }
+            
             _rapidFireActive = rapidActive;
 
             bool speedActive = _health.speedBoostTimer > 0f;
+            
             _speedVisibility = Mathf.MoveTowards(_speedVisibility, speedActive ? 1f : 0f, dt * 5f);
             Vector3 velocity = _body != null ? _body.linearVelocity : Vector3.zero;
+            
             bool moving = velocity.x * velocity.x + velocity.z * velocity.z > 0.04f;
+            
             Color glowColor = SpeedColor.linear * (2.5f * _speedVisibility);
             _glowBlock.SetVector("_Color", new Vector4(glowColor.r, glowColor.g, glowColor.b, _speedVisibility * 0.65f));
+            
             for (int i = 0; i < _trails.Length; i++)
             {
                 if (_trails[i] == null) continue;
+                
                 Vector3 position = _tracks[i].TransformPoint(_trackOffsets[i]);
                 position.y = transform.position.y + 0.04f;
                 _trails[i].transform.position = position;
@@ -287,19 +329,27 @@ namespace DemoRicochet
         private void SetBarrelGlow(float strength, float hitFlash)
         {
             if (_barrelRenderers == null) return;
+            
             Color gold = RapidFireColor.linear;
             Vector4 glow = new Vector4(gold.r, gold.g, gold.b, 0f);
             Vector4 flash = new Vector4(hitFlash, hitFlash, hitFlash, 0f);
+            
             for (int r = 0; r < _barrelRenderers.Length; r++)
             {
                 Renderer renderer = _barrelRenderers[r];
+                
                 if (renderer == null) continue;
+                
                 for (int m = 0; m < _barrelMaterials[r].Length; m++)
                 {
                     Material material = _barrelMaterials[r][m];
+                    
                     if (material == null || !material.HasProperty("_EmissionColor")) continue;
+                    
                     Vector4 original = material.GetVector("_EmissionColor");
+                    
                     bool neon = Mathf.Max(original.x, Mathf.Max(original.y, original.z)) > 1f;
+                    
                     Vector4 emission = strength > 0f
                         ? original * 0.15f + glow * strength * (neon ? 1f : 0.12f) : original;
                     renderer.GetPropertyBlock(_barrelBlock, m);
@@ -312,15 +362,19 @@ namespace DemoRicochet
         public void PlayPickup(PickupType type)
         {
             if (_root == null || _health.IsDead) return;
+            
             if (type == PickupType.Repair)
             {
                 PlayRepair();
                 return;
             }
+            
             if (type == PickupType.Shield) PulseShield();
+            
             Color color = type == PickupType.Shield ? ShieldColor : type == PickupType.Speed ? SpeedColor : RapidFireColor;
             _pickupBurst.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             _pickupBurst.Play();
+            
             for (int i = 0; i < 18; i++)
             {
                 Vector2 offset = Random.insideUnitCircle * 0.65f;
@@ -338,12 +392,15 @@ namespace DemoRicochet
         public void PlayRapidFireShot()
         {
             if (_rapidFireShot == null || _muzzle == null || _turret == null || _health.IsDead || !_health.HasRapidFire) return;
+            
             Vector3 forward = _muzzle.position - _turret.position;
             forward.y = 0f;
+            
             if (forward.sqrMagnitude < 0.001f) return;
             forward.Normalize();
             _rapidFireShot.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             _rapidFireShot.Play();
+            
             for (int i = -1; i <= 1; i++)
             {
                 Vector3 direction = Quaternion.Euler(0f, i * 8.5f, 0f) * forward;
@@ -369,6 +426,7 @@ namespace DemoRicochet
             _repairRings.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             _repairScan.Play();
             _repairRings.Play();
+            
             for (int i = 0; i < 12; i++)
             {
                 float angle = i * Mathf.PI * 2f / 12;
@@ -380,6 +438,7 @@ namespace DemoRicochet
                     startColor = Color.white
                 }, 1);
             }
+            
             for (int i = 0; i < 3; i++)
             {
                 _repairRings.Emit(new ParticleSystem.EmitParams
@@ -405,11 +464,17 @@ namespace DemoRicochet
             _repairElapsed = RepairDuration;
             _rapidFireActive = false;
             SetBarrelGlow(0f, 0f);
+            
             if (_shield != null) _shield.gameObject.SetActive(false);
+            
             if (_repairScan != null) _repairScan.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            
             if (_repairRings != null) _repairRings.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            
             if (_pickupBurst != null) _pickupBurst.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            
             if (_rapidFireShot != null) _rapidFireShot.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            
             for (int i = 0; i < _trails.Length; i++)
             {
                 if (_trails[i] == null) continue;
@@ -427,9 +492,13 @@ namespace DemoRicochet
         private void OnDestroy()
         {
             if (_shieldMat != null) Destroy(_shieldMat);
+            
             if (_scanMat != null) Destroy(_scanMat);
+            
             if (_ringMat != null) Destroy(_ringMat);
+            
             if (_softMat != null) Destroy(_softMat);
+            
             if (_trailMat != null) Destroy(_trailMat);
         }
     }

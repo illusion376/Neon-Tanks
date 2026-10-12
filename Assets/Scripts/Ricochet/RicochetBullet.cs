@@ -144,11 +144,14 @@ namespace DemoRicochet
         private static void NormalizeBoltMesh(Transform model)
         {
             MeshFilter mf = model.GetComponentInChildren<MeshFilter>();
+            
             if (mf == null || mf.sharedMesh == null) return;
             
             Bounds localBounds = mf.sharedMesh.bounds;
+            
             float meshLength = Mathf.Max(0.001f, localBounds.size.z);
             float scale = 0.42f / meshLength;
+            
             model.localScale = Vector3.one * scale;
             model.localPosition = -localBounds.center * scale;
         }
@@ -156,6 +159,7 @@ namespace DemoRicochet
         private void Update()
         {
             _lifeTimer += Time.deltaTime;
+            
             if (_lifeTimer >= maxLifeTime)
             {
                 Destroy(gameObject);
@@ -163,6 +167,7 @@ namespace DemoRicochet
             }
 
             float remainingDistance = speed * Time.deltaTime;
+            
             MoveWithRicochets(remainingDistance);
 
             if (_lastLightFrame != Time.frameCount)
@@ -175,6 +180,7 @@ namespace DemoRicochet
         private static void UpdateShaderProjectileLights()
         {
             int count = Mathf.Min(_activeBullets.Count, 8);
+            
             for (int i = 0; i < 8; i++)
             {
                 if (i < count && _activeBullets[i] != null)
@@ -202,6 +208,7 @@ namespace DemoRicochet
         private void MoveWithRicochets(float remainingDistance)
         {
             const float skinOffset = 0.015f;
+            
             int safetyIterations = 0;
 
             while (remainingDistance > 0.0001f && safetyIterations < 6)
@@ -209,6 +216,7 @@ namespace DemoRicochet
                 safetyIterations++;
 
                 bool canHitShooter = _bounceCount > 0 && _hasClearedShooter;
+                
                 if (CastBulletStep(transform.position, radius, _direction, remainingDistance, _shooterCollider, _lastBouncedWall, canHitShooter, out RaycastHit hit, out Vector3 normal))
                 {
                     Vector3 hitCenter = transform.position + _direction * hit.distance;
@@ -228,6 +236,7 @@ namespace DemoRicochet
                     }
 
                     SpecialObstacle specialObs = hit.collider.GetComponentInParent<SpecialObstacle>();
+                    
                     if (specialObs != null)
                     {
                         specialObs.OnBulletBounce(this, hitCenter);

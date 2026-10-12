@@ -110,12 +110,15 @@ namespace DemoRicochet
         public static int CountAliveEnemies()
         {
             int alive = 0;
+            
             EnemyTankAI[] enemies = Object.FindObjectsByType<EnemyTankAI>(FindObjectsSortMode.None);
+            
             for (int i = 0; i < enemies.Length; i++)
             {
                 TankHealth h = enemies[i].GetComponent<TankHealth>();
                 if (h == null || !h.IsOutOfLives) alive++;
             }
+            
             return alive;
         }
 
@@ -123,6 +126,7 @@ namespace DemoRicochet
         {
             CurrentIndex = index;
             Current = _list.levels[index];
+            
             if (Current == null)
             {
                 Debug.LogError($"[LevelManager] В LevelList пустой слот #{index + 1}");
@@ -135,9 +139,12 @@ namespace DemoRicochet
             {
                 if (Object.FindAnyObjectByType<MainMenu>() == null)
                     new GameObject("MainMenu").AddComponent<MainMenu>();
+                
                 return;
             }
+            
             if (!IsActive) return;
+            
             if (Object.FindAnyObjectByType<SimpleArenaBuilder>() != null) return;
 
             TankHealth.OnTankKilled -= HandleTankKilled;
@@ -155,6 +162,7 @@ namespace DemoRicochet
             Vector3 spawn = level.PlayerSpawnPosition;
             playerObj.transform.position = new Vector3(spawn.x, 0f, spawn.z);
             SimpleBoxTank player = playerObj.AddComponent<SimpleBoxTank>();
+            
             if (player.Health != null)
             {
                 player.Health.respawnsLeft = Mathf.Max(1, level.playerLives) - 1;
@@ -172,6 +180,7 @@ namespace DemoRicochet
         private static void HandleTankKilled(bool killedTankWasCyan)
         {
             if (!IsActive || killedTankWasCyan) return;
+            
             if (IsEndless)
             {
                 if (Object.FindObjectsByType<PickupItem>(FindObjectsSortMode.None).Length >= EndlessPickupLimit) return;
@@ -180,6 +189,7 @@ namespace DemoRicochet
             if (Random.value > Current.killDropChance) return;
 
             SimpleBoxTank player = Object.FindAnyObjectByType<SimpleBoxTank>();
+            
             if (player == null || player.Health == null || player.Health.IsDead) return;
 
             if (!TryFindDropPoint(player.transform.position, out Vector3 point)) return;
@@ -191,7 +201,9 @@ namespace DemoRicochet
             PickupItem drop = PickupItem.SpawnPickup("Drop_" + type, type, point);
             drop.respawnDelay = 0f;
             drop.playerOnly = true;
+            
             if (!IsEndless) _killDropsLeft--;
+            
             NeonAudio.PickupSpawn(point);
         }
 
@@ -199,27 +211,36 @@ namespace DemoRicochet
         {
             const float radius = 2.0f;
             float startAngle = Random.Range(0f, 360f);
+            
             for (int i = 0; i < 12; i++)
             {
                 float angle = (startAngle + i * 30f) * Mathf.Deg2Rad;
                 point = center + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
+                
                 if (point.x < SimpleArenaBuilder.MinX + 0.8f || point.x > SimpleArenaBuilder.MaxX - 0.8f ||
                     point.z < SimpleArenaBuilder.MinZ + 0.8f || point.z > SimpleArenaBuilder.MaxZ - 0.8f) continue;
+                
                 if (Physics.CheckSphere(point + Vector3.up * 0.6f, 0.5f, ~0, QueryTriggerInteraction.Ignore)) continue;
+                
                 if (IsNearOtherPickup(point)) continue;
+                
                 return true;
             }
+            
             point = center;
+            
             return false;
         }
 
         private static bool IsNearOtherPickup(Vector3 point)
         {
             PickupItem[] pickups = Object.FindObjectsByType<PickupItem>(FindObjectsSortMode.None);
+            
             for (int i = 0; i < pickups.Length; i++)
             {
                 if (Vector3.Distance(pickups[i].transform.position, point) < 1.5f) return true;
             }
+            
             return false;
         }
     }

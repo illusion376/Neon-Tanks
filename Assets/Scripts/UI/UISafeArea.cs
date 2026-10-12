@@ -27,6 +27,7 @@ namespace DemoRicochet
         private void ApplySafeArea()
         {
             if (Screen.width <= 0 || Screen.height <= 0) return;
+            
             _lastSafeArea = Screen.safeArea;
             _lastScreenSize = new Vector2Int(Screen.width, Screen.height);
             _rectTransform.anchorMin = new Vector2(_lastSafeArea.xMin / Screen.width, _lastSafeArea.yMin / Screen.height);
