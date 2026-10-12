@@ -8,6 +8,7 @@ Shader "NeonRicochet/NeonSurface"
         _Metallic ("Metallic", Range(0,1)) = .4
         _Glossiness ("Glossiness", Range(0,1)) = .6
         _AmbientLift ("Scenery ambient fill", Range(0,1)) = 0
+        _FrameGlow ("Violet perimeter lighting", Range(0,1)) = .5
         _ReceiveProjectileLights ("Receive projectile lights", Float) = 1
         _Grid ("Floor grid", Float) = 0
         [HDR] _GridColor ("Purple floor grid", Color) = (.45,.12,.58,1)
@@ -30,7 +31,7 @@ Shader "NeonRicochet/NeonSurface"
             struct v2f { float4 vertex : SV_POSITION; float3 world : TEXCOORD0; float3 normal : TEXCOORD1; };
             float4 _Color, _EmissionColor, _GridColor, _ArenaBounds;
             float _Rim, _Metallic, _Glossiness, _Grid, _GridScale, _GridEmission;
-            float _AmbientLift, _ReceiveProjectileLights;
+            float _AmbientLift, _ReceiveProjectileLights, _FrameGlow;
             // One bounded set of short-range lights shared by all scene materials.
             float4 _NeonProjectileLights[8];
             float4 _NeonProjectileColors[8];
@@ -86,12 +87,11 @@ Shader "NeonRicochet/NeonSurface"
                 float rim=pow(1-ndv,3)*max(_Rim,0);
                 color+=float3(.075,.11,.19)*rim*(.35+.65*hemisphere);
 
-                // Only a narrow, normal-dependent frame bounce remains. The previous large corner
-                // lights added magenta even to surfaces facing away and destroyed material depth.
+                // A restrained violet bounce follows the entire perimeter, with no corner hotspots.
                 float edgeDistance=min(min(abs(i.world.x-_ArenaBounds.x),abs(i.world.x-_ArenaBounds.y)),
                     min(abs(i.world.z-_ArenaBounds.z),abs(i.world.z-_ArenaBounds.w)));
-                float frameBounce=exp2(-edgeDistance*1.8)*(.2+.8*saturate(n.y));
-                color+=albedo*float3(.21,.045,.32)*frameBounce;
+                float frameBounce=exp2(-edgeDistance*.85)*(.25+.75*saturate(n.y));
+                color+=(albedo*2.6+float3(.035,.015,.05))*float3(.65,.095,1.1)*frameBounce*_FrameGlow;
                 // Decorative blocks and the lower plane use the room fill instead of short-range
                 // projectile lights. Their shared materials skip this expensive full-screen work.
                 [branch] if(_ReceiveProjectileLights>.5)

@@ -18,13 +18,13 @@
     0.66
   ],
   "gridScale": 0.7407407407407407,
-  "gridEmission": 0.3,
+  "gridEmission": 0.38,
   "rimColor": [
     1.0,
     0.93,
     0.99
   ],
-  "rimEmission": 8.0,
+  "rimEmission": 6.0,
   "blocks": [
     {
       "position": [

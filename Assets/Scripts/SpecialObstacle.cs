@@ -29,6 +29,7 @@ namespace DemoRicochet
         public float closedDuration = 4.5f;
         public float openDuration = 3.2f;
         public float phaseOffset = 0f;
+        [Min(0.05f)] public float gateAnimationDuration = 0.35f;
 
         private Transform _modelTransform;
         private BoxCollider _boxCollider;
@@ -46,6 +47,14 @@ namespace DemoRicochet
         private bool _isGateOpen;
         private float _gateTimer;
         private float _gateWarnTimer;
+        private Vector3 _gateClosedScale;
+        private float _gateClosedHeight;
+        private float _gateOpenAmount;
+        private float _gateStartAmount;
+        private float _gateAnimationTime;
+        private bool _gateAnimating;
+        private LineRenderer _gateScan;
+        private Material _gateScanMaterial;
 
         private struct NeonSlot
         {
@@ -131,7 +140,9 @@ namespace DemoRicochet
             {
                 _gateTimer = closedDuration + phaseOffset;
                 _isGateOpen = false;
+                _gateClosedScale = _modelTransform != null ? _modelTransform.localScale : Vector3.one;
                 BuildGatePylons();
+                BuildGateScan();
             }
 
             ApplySurfaceTint(0f, 8.0f);
@@ -318,12 +329,85 @@ namespace DemoRicochet
             }
 
             ApplySurfaceTint(0f, gateIntensity);
+            UpdateGateVisual(dt);
+        }
+
+        private void BuildGateScan()
+        {
+            Shader shader = NeonVisuals.GroundShader;
+            if (shader == null) return;
+            _gateClosedHeight = _boxCollider != null ? _boxCollider.center.y + _boxCollider.size.y * 0.5f : 1.2f;
+            if (_modelTransform != null)
+            {
+                float top = 0f;
+                foreach (Renderer renderer in _modelTransform.GetComponentsInChildren<Renderer>())
+                    top = Mathf.Max(top, transform.InverseTransformPoint(renderer.bounds.center + Vector3.up * renderer.bounds.extents.y).y);
+                if (top > 0f) _gateClosedHeight = top;
+            }
+
+            _gateScanMaterial = new Material(shader) { name = "GateScanMat" };
+            _gateScanMaterial.SetFloat("_Mode", 3f);
+            _gateScanMaterial.SetVector(_colorId, GateTint.linear * 2.2f);
+            GameObject scan = new GameObject("GateScan");
+            scan.transform.SetParent(transform, false);
+            _gateScan = scan.AddComponent<LineRenderer>();
+            _gateScan.useWorldSpace = false;
+            _gateScan.positionCount = 2;
+            _gateScan.startWidth = _gateScan.endWidth = 0.075f;
+            _gateScan.sharedMaterial = _gateScanMaterial;
+            _gateScan.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _gateScan.receiveShadows = false;
+            _gateScan.enabled = false;
+        }
+
+        private void UpdateGateVisual(float dt)
+        {
+            if (!_gateAnimating) return;
+            // Если танк успел въехать во время закрытия, возвращаем проход в открытое состояние.
+            if (!_isGateOpen && IsTankInsideGate())
+            {
+                SetGateOpen(true);
+                _gateTimer = Mathf.Max(openDuration, 1f);
+            }
+
+            _gateAnimationTime += dt;
+            float t = Mathf.Clamp01(_gateAnimationTime / Mathf.Max(0.05f, gateAnimationDuration));
+            float smooth = t * t * (3f - 2f * t);
+            _gateOpenAmount = Mathf.Lerp(_gateStartAmount, _isGateOpen ? 1f : 0f, smooth);
+            if (_modelTransform != null)
+            {
+                Vector3 scale = _gateClosedScale;
+                scale.y *= Mathf.Lerp(1f, 0.02f, _gateOpenAmount);
+                _modelTransform.localScale = scale;
+            }
+
+            if (_gateScan != null)
+            {
+                float halfWidth = _boxCollider != null ? _boxCollider.size.x * 0.5f : 1.2f;
+                float z = _boxCollider != null ? _boxCollider.center.z - _boxCollider.size.z * 0.5f - 0.03f : -0.45f;
+                float y = _gateClosedHeight * (1f - _gateOpenAmount) + 0.035f;
+                _gateScan.SetPosition(0, new Vector3(-halfWidth, y, z));
+                _gateScan.SetPosition(1, new Vector3(halfWidth, y, z));
+                _gateScan.enabled = true;
+            }
+            if (_floorGlowMat != null)
+                _floorGlowMat.SetVector(_colorId, GateTint.linear * Mathf.Lerp(0.95f, 0.25f, _gateOpenAmount));
+
+            if (t < 1f) return;
+            _gateAnimating = false;
+            if (_modelTransform != null) _modelTransform.gameObject.SetActive(!_isGateOpen);
+            if (_boxCollider != null) _boxCollider.enabled = !_isGateOpen;
+            if (_shadowRenderer != null) _shadowRenderer.enabled = !_isGateOpen;
+            if (_gateScan != null) _gateScan.enabled = false;
         }
 
         private bool IsTankInsideGate()
         {
-            Vector3 center = transform.position + Vector3.up * 0.65f;
-            Collider[] cols = Physics.OverlapSphere(center, 1.15f, ~0, QueryTriggerInteraction.Ignore);
+            Vector3 center = _boxCollider != null ? transform.TransformPoint(_boxCollider.center) : transform.position + Vector3.up * 0.65f;
+            Vector3 scale = transform.lossyScale;
+            scale = new Vector3(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z));
+            Vector3 half = _boxCollider != null ? Vector3.Scale(_boxCollider.size * 0.5f, scale) : new Vector3(1.4f, 0.65f, 0.55f);
+            Collider[] cols = Physics.OverlapBox(center, half + Vector3.one * 0.08f, transform.rotation, ~0, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < cols.Length; i++)
             {
                 if (cols[i] != null && cols[i].GetComponentInParent<TankHealth>() != null)
@@ -337,17 +421,14 @@ namespace DemoRicochet
         private void SetGateOpen(bool open)
         {
             _isGateOpen = open;
-            if (_modelTransform != null) _modelTransform.gameObject.SetActive(!open);
-            if (_boxCollider != null) _boxCollider.enabled = !open;
-            if (_shadowRenderer != null) _shadowRenderer.enabled = !open;
-
-            if (_floorGlowMat != null)
-            {
-                Color c = GetModeColor().linear * (open ? 0.35f : 0.95f);
-                _floorGlowMat.SetVector(_colorId, c);
-            }
-
-            TankHealth.SpawnRingBurst(transform.position, GateTint, 1.8f);
+            _gateStartAmount = _gateOpenAmount;
+            _gateAnimationTime = 0f;
+            _gateAnimating = true;
+            if (_modelTransform != null) _modelTransform.gameObject.SetActive(true);
+            if (_shadowRenderer != null) _shadowRenderer.enabled = true;
+            // Проход закрывается только после сборки панели и проверки, что внутри нет танка.
+            if (!open && _boxCollider != null) _boxCollider.enabled = false;
+            ObstacleEffects.PlayGate(transform, _boxCollider, GateTint);
             NeonAudio.GateToggle(open, transform.position);
         }
 
@@ -411,6 +492,7 @@ namespace DemoRicochet
         {
             _isDestroyed = true;
             _rebuildTimer = rebuildDelay;
+            ObstacleEffects.PlayBreak(transform, _boxCollider, BreakableTint);
 
             if (_modelTransform != null) _modelTransform.gameObject.SetActive(false);
             if (_boxCollider != null) _boxCollider.enabled = false;
@@ -418,7 +500,6 @@ namespace DemoRicochet
             if (_floorGlowRenderer != null) _floorGlowRenderer.enabled = false;
 
             RefreshDestructibleState();
-            TankHealth.SpawnRingBurst(transform.position, BreakableTint, 2.8f);
             NeonAudio.BlockShatter(transform.position);
         }
 
@@ -506,6 +587,12 @@ namespace DemoRicochet
                 case ObstacleMode.Gate: return GateTint;
                 default: return Color.white;
             }
+        }
+
+        private void OnDestroy()
+        {
+            if (_gateScanMaterial != null) Destroy(_gateScanMaterial);
+            if (_floorGlowMat != null) Destroy(_floorGlowMat);
         }
     }
 }
