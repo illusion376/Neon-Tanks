@@ -91,7 +91,7 @@ namespace DemoRicochet
 
             EnsureEventSystem();
             BuildInterface();
-            if (MobileControls.IsTouchMode || Application.isEditor)
+            if (MobileControls.IsTouchMode)
             {
                 _mobileControls = gameObject.AddComponent<MobileControls>();
             }

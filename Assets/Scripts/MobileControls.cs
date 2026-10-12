@@ -12,7 +12,11 @@ namespace DemoRicochet
     /// </summary>
     public class MobileControls : MonoBehaviour
     {
+#if UNITY_EDITOR
+        public static bool IsTouchMode => false;
+#else
         public static bool IsTouchMode => Application.isMobilePlatform;
+#endif
 
         private GameObject _canvasObject;
         private Image _aimBackground;
