@@ -76,31 +76,8 @@ namespace DemoRicochet
 
         private void BuildSafeZoneVisual()
         {
-            Shader ground = NeonVisuals.GroundShader;
-            if (ground == null || safeZoneRadius <= 0f) return;
-
-            Color mint = new Color(0.18f, 1.0f, 0.80f);
-            Transform zone = new GameObject("SafeZone").transform;
-            zone.SetParent(transform, false);
-            zone.position = new Vector3(PlayerSpawnPosition.x, 0f, PlayerSpawnPosition.z);
-            _safeZoneVisual = zone.gameObject;
-            _safeZoneVisual.SetActive(_safeZoneActive);
-
-            Material fillMat = new Material(ground) { name = "SafeZoneFill", renderQueue = 2998 };
-            fillMat.SetFloat("_Mode", 0f);
-            fillMat.SetVector("_Color", mint.linear * 0.6f);
-            GameObject fill = NeonVisuals.CreateEffectQuad("Fill", zone, fillMat);
-            fill.transform.localPosition = new Vector3(0f, 0.015f, 0f);
-            fill.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            fill.transform.localScale = Vector3.one * safeZoneRadius * 2.4f;
-
-            Material ringMat = new Material(ground) { name = "SafeZoneRing", renderQueue = 3008 };
-            ringMat.SetFloat("_Mode", 1f);
-            ringMat.SetVector("_Color", mint.linear * 1.6f);
-            GameObject ring = NeonVisuals.CreateEffectQuad("Ring", zone, ringMat);
-            ring.transform.localPosition = new Vector3(0f, 0.022f, 0f);
-            ring.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            ring.transform.localScale = Vector3.one * safeZoneRadius * 2f;
+            // Визуальные эффекты спавнзоны (свечение и пунктирный кружок) отключены.
+            // Сама игровая зона и логика защиты продолжают работать без визуала на полу.
         }
 
         // Подсказки в окне Scene: границы арены, старт, зона, враги и бонусы
