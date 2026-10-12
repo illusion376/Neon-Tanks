@@ -1071,9 +1071,9 @@ namespace DemoRicochet
             colors.fadeDuration = 0.08f;
             button.colors = colors;
 
-            Image icon = CreateImage("Icon", button.transform, new Vector2(30f, 30f), new Vector2(0.5f, 0.5f), new Vector2(-94f, 0f), Color.white);
+            Image icon = CreateImage("Icon", button.transform, new Vector2(30f, 30f), new Vector2(0.5f, 0.5f), new Vector2(-126f, 0f), Color.white);
             icon.sprite = Resources.Load<Sprite>("NeonTanks/UI/" + iconArt);
-            CreateLabel(label, button.transform, 20, Color.white, new Vector2(270f, 50f), new Vector2(0.5f, 0.5f), new Vector2(28f, 0f), FontStyle.Bold);
+            CreateLabel(label, button.transform, 20, Color.white, new Vector2(220f, 50f), new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
         }
 
         private GameObject BuildModalOverlay(

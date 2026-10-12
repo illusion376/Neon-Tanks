@@ -100,7 +100,7 @@ namespace DemoRicochet
             button.onClick.AddListener(NeonAudio.UiClick);
             button.onClick.AddListener(action);
 
-            RectTransform labelRect = CreateRect("Label", button.transform, new Vector2(330f, 56f), new Vector2(-8f, 0f));
+            RectTransform labelRect = CreateRect("Label", button.transform, new Vector2(310f, 56f), Vector2.zero);
             Text text = labelRect.gameObject.AddComponent<Text>();
             text.font = _font;
             text.text = label;
