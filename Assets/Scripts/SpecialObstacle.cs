@@ -490,6 +490,7 @@ namespace DemoRicochet
         private void ShatterDestructible()
         {
             _isDestroyed = true;
+            _hitFlashTimer = 0f;
             _rebuildTimer = rebuildDelay;
             ObstacleEffects.PlayBreak(transform, _boxCollider, BreakableTint);
 
@@ -512,6 +513,7 @@ namespace DemoRicochet
 
             _isDestroyed = false;
             currentHealth = maxHealth;
+            _hitFlashTimer = 0f;
 
             if (_modelTransform != null) _modelTransform.gameObject.SetActive(true);
             if (_boxCollider != null) _boxCollider.enabled = true;
@@ -519,7 +521,7 @@ namespace DemoRicochet
             if (_floorGlowRenderer != null) _floorGlowRenderer.enabled = true;
 
             RefreshDestructibleState();
-            ApplySurfaceTint(1.5f, 8.0f);
+            ApplySurfaceTint(0f, 8.0f);
             TankHealth.SpawnRingBurst(transform.position, BreakableTint, 2.1f);
             NeonAudio.BlockRebuild(transform.position);
         }
