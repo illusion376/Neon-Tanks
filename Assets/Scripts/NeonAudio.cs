@@ -22,6 +22,7 @@ namespace DemoRicochet
         private const string MusicPath = "NeonTanks/Audio/Music/bgm_arena_loop";
         private const int PoolSize = 24;
         private const string SfxVolumeKey = "NeonTanks.SfxVolume";
+        private const string MusicVolumeKey = "NeonTanks.MusicVolume";
 
         [Header("Громкость")]
         [Range(0f, 1f)] public float masterVolume = 0.5f;
@@ -59,6 +60,31 @@ namespace DemoRicochet
                 _instance._pool[i].volume = _instance._poolVolumes[i] * SfxVolume;
             }
             PlayerPrefs.SetFloat(SfxVolumeKey, _instance.sfxVolume);
+        }
+
+        public static float MusicVolume => EnsureInstance() ? _instance.musicVolume : 0.22f;
+
+        public static void SetMusicVolume(float volume)
+        {
+            if (!EnsureInstance()) return;
+            _instance.musicVolume = Mathf.Clamp01(volume);
+            if (_instance._music != null)
+            {
+                float target = _instance.masterVolume * _instance.musicVolume * (Time.timeScale < 0.01f ? _instance.musicDuckOnPause : 1f);
+                if (_instance.musicVolume <= 0.001f)
+                {
+                    _instance._music.volume = 0f;
+                }
+                else
+                {
+                    _instance._music.volume = target;
+                    if (!_instance._music.isPlaying && _instance._music.clip != null)
+                    {
+                        _instance._music.Play();
+                    }
+                }
+            }
+            PlayerPrefs.SetFloat(MusicVolumeKey, _instance.musicVolume);
         }
 
         public static void StopEffects()
@@ -111,6 +137,7 @@ namespace DemoRicochet
             }
             _instance = this;
             sfxVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(SfxVolumeKey, sfxVolume));
+            musicVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(MusicVolumeKey, musicVolume));
 
             _pool = new AudioSource[PoolSize];
             _poolStartTime = new float[PoolSize];

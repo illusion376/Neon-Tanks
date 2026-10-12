@@ -43,6 +43,8 @@ namespace DemoRicochet
         private GameObject _pauseOverlay;
         private Slider _sfxVolumeSlider;
         private Text _sfxVolumeText;
+        private Slider _musicVolumeSlider;
+        private Text _musicVolumeText;
         private GameObject _resultOverlay;
         private Text _resultHeading;
         private Text _resultSubheading;
@@ -279,9 +281,18 @@ namespace DemoRicochet
             {
                 if (_isPaused)
                 {
-                    float volume = NeonAudio.EffectsVolume;
-                    _sfxVolumeSlider.SetValueWithoutNotify(volume);
-                    _sfxVolumeText.text = $"{Mathf.RoundToInt(volume * 100f)}%";
+                    if (_sfxVolumeSlider != null)
+                    {
+                        float volume = NeonAudio.EffectsVolume;
+                        _sfxVolumeSlider.SetValueWithoutNotify(volume);
+                        if (_sfxVolumeText != null) _sfxVolumeText.text = $"{Mathf.RoundToInt(volume * 100f)}%";
+                    }
+                    if (_musicVolumeSlider != null)
+                    {
+                        float musicVol = NeonAudio.MusicVolume;
+                        _musicVolumeSlider.SetValueWithoutNotify(musicVol);
+                        if (_musicVolumeText != null) _musicVolumeText.text = $"{Mathf.RoundToInt(musicVol * 100f)}%";
+                    }
                 }
                 _pauseOverlay.SetActive(_isPaused);
             }
@@ -768,41 +779,50 @@ namespace DemoRicochet
             RectTransform safeArea = CreateRect("SafeArea", backdrop.transform, Vector2.zero, Vector2.zero, Vector2.zero);
             safeArea.gameObject.AddComponent<UISafeArea>();
 
-            Image panel = CreateImage("PauseCard", safeArea, new Vector2(460f, 464f), new Vector2(0.5f, 0.5f), Vector2.zero, Color.white);
+            Image panel = CreateImage("PauseCard", safeArea, new Vector2(460f, 540f), new Vector2(0.5f, 0.5f), Vector2.zero, Color.white);
             panel.sprite = Resources.Load<Sprite>("NeonTanks/UI/PausePanel");
             panel.type = Image.Type.Sliced;
 
-            CreateLabel("ПАУЗА", panel.transform, 42, Color.white, new Vector2(200f, 60f), new Vector2(0.5f, 0.5f), new Vector2(0f, 166f), FontStyle.Bold);
+            CreateLabel("ПАУЗА", panel.transform, 42, Color.white, new Vector2(200f, 60f), new Vector2(0.5f, 0.5f), new Vector2(0f, 204f), FontStyle.Bold);
             for (int i = 0; i < 2; i++)
             {
-                Image accent = CreateImage("TitleAccent_" + i, panel.transform, new Vector2(90f, 4f), new Vector2(0.5f, 0.5f), new Vector2(i == 0 ? -152f : 152f, 166f), i == 0 ? Cyan : Magenta);
+                Image accent = CreateImage("TitleAccent_" + i, panel.transform, new Vector2(90f, 4f), new Vector2(0.5f, 0.5f), new Vector2(i == 0 ? -152f : 152f, 204f), i == 0 ? Cyan : Magenta);
                 accent.sprite = Resources.Load<Sprite>("NeonTanks/UI/PauseTitleAccent");
                 if (i == 1) accent.rectTransform.localScale = new Vector3(-1f, 1f, 1f);
             }
 
-            CreatePauseMenuButton(panel.transform, "ContinueButton", "ПРОДОЛЖИТЬ", "PauseContinue", "PausePlayIcon", 90f, () => SetPaused(false));
-            CreatePauseMenuButton(panel.transform, "RestartButton", "НАЧАТЬ ЗАНОВО", "PauseRestart", "PauseRestartIcon", 13f, RestartMatch);
-            CreatePauseMenuButton(panel.transform, "MainMenuButton", "ГЛАВНОЕ МЕНЮ", "PauseRestart", "PauseHomeIcon", -64f, LevelManager.ReturnToMainMenu);
-            BuildVolumeSlider(panel.transform);
+            CreatePauseMenuButton(panel.transform, "ContinueButton", "ПРОДОЛЖИТЬ", "PauseContinue", "PausePlayIcon", 128f, () => SetPaused(false));
+            CreatePauseMenuButton(panel.transform, "RestartButton", "НАЧАТЬ ЗАНОВО", "PauseRestart", "PauseRestartIcon", 51f, RestartMatch);
+            CreatePauseMenuButton(panel.transform, "MainMenuButton", "ГЛАВНОЕ МЕНЮ", "PauseRestart", "PauseHomeIcon", -26f, LevelManager.ReturnToMainMenu);
+
+            _sfxVolumeSlider = CreateVolumeSliderRow(panel.transform, "ЗВУКИ", -92f, -126f, NeonAudio.EffectsVolume, out _sfxVolumeText, NeonAudio.SetEffectsVolume);
+            _musicVolumeSlider = CreateVolumeSliderRow(panel.transform, "МУЗЫКА", -168f, -202f, NeonAudio.MusicVolume, out _musicVolumeText, NeonAudio.SetMusicVolume);
             return backdrop.gameObject;
         }
 
-        private void BuildVolumeSlider(Transform parent)
+        private Slider CreateVolumeSliderRow(
+            Transform parent,
+            string label,
+            float labelY,
+            float sliderY,
+            float initialVolume,
+            out Text valueText,
+            System.Action<float> onValueChanged)
         {
-            CreateLabel("ЗВУКИ", parent, 15, Muted, new Vector2(260f, 26f),
-                new Vector2(0.5f, 0.5f), new Vector2(-54f, -140f), FontStyle.Bold).alignment = TextAnchor.MiddleLeft;
-            _sfxVolumeText = CreateLabel("", parent, 15, Cyan, new Vector2(80f, 26f),
-                new Vector2(0.5f, 0.5f), new Vector2(144f, -140f), FontStyle.Bold);
-            _sfxVolumeText.alignment = TextAnchor.MiddleRight;
+            CreateLabel(label, parent, 15, Muted, new Vector2(260f, 26f),
+                new Vector2(0.5f, 0.5f), new Vector2(-54f, labelY), FontStyle.Bold).alignment = TextAnchor.MiddleLeft;
+            valueText = CreateLabel("", parent, 15, Cyan, new Vector2(80f, 26f),
+                new Vector2(0.5f, 0.5f), new Vector2(144f, labelY), FontStyle.Bold);
+            valueText.alignment = TextAnchor.MiddleRight;
 
-            Image hitArea = CreateImage("SfxVolumeSlider", parent, new Vector2(368f, 42f),
-                new Vector2(0.5f, 0.5f), new Vector2(0f, -176f), Color.clear);
+            Image hitArea = CreateImage(label + "VolumeSlider", parent, new Vector2(368f, 42f),
+                new Vector2(0.5f, 0.5f), new Vector2(0f, sliderY), Color.clear);
             hitArea.raycastTarget = true;
-            _sfxVolumeSlider = hitArea.gameObject.AddComponent<Slider>();
-            _sfxVolumeSlider.minValue = 0f;
-            _sfxVolumeSlider.maxValue = 1f;
-            _sfxVolumeSlider.direction = Slider.Direction.LeftToRight;
-            _sfxVolumeSlider.navigation = new Navigation { mode = Navigation.Mode.None };
+            Slider slider = hitArea.gameObject.AddComponent<Slider>();
+            slider.minValue = 0f;
+            slider.maxValue = 1f;
+            slider.direction = Slider.Direction.LeftToRight;
+            slider.navigation = new Navigation { mode = Navigation.Mode.None };
 
             CreateImage("Track", hitArea.transform, new Vector2(344f, 6f),
                 new Vector2(0.5f, 0.5f), Vector2.zero, new Color(0.12f, 0.26f, 0.32f));
@@ -810,28 +830,30 @@ namespace DemoRicochet
                 new Vector2(0.5f, 0.5f), Vector2.zero);
             Image fill = CreateImage("Fill", fillArea, Vector2.zero, Vector2.zero, Vector2.zero, Cyan);
             fill.rectTransform.anchorMax = Vector2.one;
-            _sfxVolumeSlider.fillRect = fill.rectTransform;
+            slider.fillRect = fill.rectTransform;
 
             RectTransform handleArea = CreateRect("HandleArea", hitArea.transform, new Vector2(344f, 26f),
                 new Vector2(0.5f, 0.5f), Vector2.zero);
             Image handle = CreateImage("Handle", handleArea, new Vector2(22f, 0f),
                 new Vector2(0.5f, 0.5f), Vector2.zero, Cyan);
-            _sfxVolumeSlider.handleRect = handle.rectTransform;
-            _sfxVolumeSlider.targetGraphic = handle;
-            ColorBlock colors = _sfxVolumeSlider.colors;
+            slider.handleRect = handle.rectTransform;
+            slider.targetGraphic = handle;
+            ColorBlock colors = slider.colors;
             colors.normalColor = Color.white;
             colors.highlightedColor = new Color(0.9f, 1f, 1f);
             colors.pressedColor = White;
-            _sfxVolumeSlider.colors = colors;
+            slider.colors = colors;
 
-            float volume = NeonAudio.EffectsVolume;
-            _sfxVolumeSlider.SetValueWithoutNotify(volume);
-            _sfxVolumeText.text = $"{Mathf.RoundToInt(volume * 100f)}%";
-            _sfxVolumeSlider.onValueChanged.AddListener(value =>
+            slider.SetValueWithoutNotify(initialVolume);
+            valueText.text = $"{Mathf.RoundToInt(initialVolume * 100f)}%";
+            Text labelRef = valueText;
+            slider.onValueChanged.AddListener(value =>
             {
-                NeonAudio.SetEffectsVolume(value);
-                _sfxVolumeText.text = $"{Mathf.RoundToInt(value * 100f)}%";
+                onValueChanged?.Invoke(value);
+                if (labelRef != null) labelRef.text = $"{Mathf.RoundToInt(value * 100f)}%";
             });
+
+            return slider;
         }
 
         private void CreatePauseMenuButton(Transform parent, string name, string label, string art, string iconArt, float y, UnityEngine.Events.UnityAction onClick)
