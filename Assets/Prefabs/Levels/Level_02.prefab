@@ -91,7 +91,7 @@ MonoBehaviour:
   playerLives: 2
   safeZoneRadius: 2.2
   killDropLimit: 1
-  killDropChance: 0.6
+  killDropChance: 0.3
 --- !u!1 &2899771117990231252
 GameObject:
   m_ObjectHideFlags: 0
