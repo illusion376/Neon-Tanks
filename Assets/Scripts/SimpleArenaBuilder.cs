@@ -251,29 +251,6 @@ namespace DemoRicochet
             SpawnVisualCube("RimLeftAccent", envRoot, new Vector3(MinX - 2.3f, cfg.rimHeight, centerZ), new Vector3(4.6f, 0.08f * arenaScale, 0.08f * arenaScale), rimMat);
             SpawnVisualCube("RimRightAccent", envRoot, new Vector3(MaxX + 2.3f, cfg.rimHeight, centerZ), new Vector3(4.6f, 0.08f * arenaScale, 0.08f * arenaScale), rimMat);
 
-            if (cfg.washes != null && ground != null)
-            {
-                for (int i = 0; i < cfg.washes.Length; i++)
-                {
-                    WashData w = cfg.washes[i];
-                    Material washMat = new Material(ground) { name = "FloorWash_" + i, renderQueue = 2990 };
-                    washMat.SetFloat("_Mode", 0f);
-                    Color washColor = ToColor(w.color).linear * w.strength;
-                    washColor.a = 1f;
-                    washMat.SetVector("_Color", washColor);
-
-                    GameObject quad = NeonVisuals.CreateEffectQuad("FloorWash", surroundRoot, washMat);
-                    Vector3 washPos = ToVec3(w.position);
-                    if (washPos.y > -0.5f)
-                    {
-                        washPos.y = 0.004f + i * 0.001f;
-                    }
-                    quad.transform.localPosition = washPos;
-                    quad.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-                    quad.transform.localScale = new Vector3(w.size[0], w.size[1], 1f);
-                }
-            }
-
             if (ground != null)
             {
                 CreateFloatingDust(envRoot, cfg, ground, width, depth, centerX, centerZ);
