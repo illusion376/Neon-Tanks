@@ -59,6 +59,34 @@
       "glb": "GLB/NT_Tank_Magenta.glb"
     },
     {
+      "name": "NT_Turret_Magenta",
+      "category": "Tanks",
+      "triangles": 816,
+      "vertices": 464,
+      "mesh_objects": 4,
+      "bounds_min": [
+        -0.5338656902313232,
+        -0.5338656902313232,
+        0.024999991059303284
+      ],
+      "bounds_max": [
+        0.5338656306266785,
+        0.9440000057220459,
+        0.8934999704360962
+      ],
+      "degenerate_triangles": 0,
+      "pivots": [
+        "NT_Turret_Magenta__Base",
+        "NT_Turret_Magenta__Pedestal",
+        "NT_Turret_Magenta__TurretPivot",
+        "NT_Turret_Magenta__Turret",
+        "NT_Turret_Magenta__BarrelRecoil",
+        "NT_Turret_Magenta__Barrel",
+        "NT_Turret_Magenta__Muzzle"
+      ],
+      "fbx": "Models/Tanks/NT_Turret_Magenta.fbx"
+    },
+    {
       "name": "NT_Wall_Long_Cyan",
       "category": "Walls",
       "triangles": 660,

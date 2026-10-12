@@ -106,11 +106,13 @@ namespace DemoRicochet
 
         private void BuildEnemyVisuals()
         {
-            GameObject modelWrapper = NeonVisuals.InstantiateModel("Tanks/NT_Tank_Magenta", transform, "TankModel", false);
+            bool isTurret = moveSpeed <= 0f;
+            string modelPath = isTurret ? "Tanks/NT_Turret_Magenta" : "Tanks/NT_Tank_Magenta";
+            GameObject modelWrapper = NeonVisuals.InstantiateModel(modelPath, transform, "TankModel", false);
             if (modelWrapper == null) return;
 
             _hullTransform = modelWrapper.transform;
-            _hullTransform.localScale = Vector3.one * 0.6f;
+            _hullTransform.localScale = Vector3.one * (isTurret ? 1f : 0.6f);
 
             _turretPivot = FindBySuffix(_hullTransform, "__TurretPivot");
             _barrelRecoil = FindBySuffix(_hullTransform, "__BarrelRecoil");
@@ -134,7 +136,8 @@ namespace DemoRicochet
                 _recoilBackLocalDir = _barrelRecoil.parent.InverseTransformDirection(-Vector3.forward);
             }
 
-            GameObject shadowObj = NeonVisuals.CreateContactShadow(transform, new Vector2(1.65f, 1.85f), 0.62f);
+            Vector2 shadowSize = isTurret ? new Vector2(1.75f, 1.75f) : new Vector2(1.65f, 1.85f);
+            GameObject shadowObj = NeonVisuals.CreateContactShadow(transform, shadowSize, 0.62f);
             if (shadowObj != null)
             {
                 _shadowTransform = shadowObj.transform;

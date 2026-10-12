@@ -441,7 +441,6 @@ namespace DemoRicochet
             {
                 bullet.speed = Mathf.Min(22f, bullet.speed * 1.25f);
                 bullet.maxBounces = Mathf.Min(6, bullet.maxBounces + 1);
-                TankHealth.SpawnRingBurst(hitPoint, MirrorTint, 1.35f);
             }
             else if (mode == ObstacleMode.Destructible && !_isDestroyed)
             {
