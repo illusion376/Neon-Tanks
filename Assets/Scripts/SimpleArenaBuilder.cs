@@ -197,7 +197,7 @@ namespace DemoRicochet
             surroundRoot.localScale = new Vector3(width / (cfg.maxX - cfg.minX), 1f, depth / (cfg.maxZ - cfg.minZ));
 
             Material floorMat = CreateSurfaceMat(surface, "FloorGrid", ToColor(cfg.floorColor), Color.black, 0f, boundsVec);
-            floorMat.SetFloat("_AmbientLift", 0.25f);
+            floorMat.SetFloat("_AmbientLift", 0.28f);
             floorMat.SetFloat("_Grid", 1f);
             floorMat.SetVector("_GridColor", ToColor(cfg.gridColor).linear);
             floorMat.SetFloat("_GridScale", cfg.gridScale);
@@ -224,7 +224,7 @@ namespace DemoRicochet
                 for (int i = 0; i < paletteMats.Length; i++)
                 {
                     paletteMats[i] = CreateSurfaceMat(surface, "SurroundBlock_" + i, ToColor(cfg.blockPalette[i].color), Color.black, 0f, boundsVec);
-                    paletteMats[i].SetFloat("_AmbientLift", 0.65f);
+                    paletteMats[i].SetFloat("_AmbientLift", 0.5f);
                     paletteMats[i].SetFloat("_ReceiveProjectileLights", 0f);
                 }
 
