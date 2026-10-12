@@ -303,11 +303,6 @@ namespace DemoRicochet
             return blocked;
         }
 
-        private static bool IsNearSafeZone(Vector3 point)
-        {
-            return false;
-        }
-
         private void PickBestCorridorWaypoint()
         {
             float bestScore = -1f;
@@ -322,7 +317,7 @@ namespace DemoRicochet
                 float forwardBias = Vector3.Dot(dir, _moveDir) * 0.8f;
                 float score = clearDist + forwardBias + Random.Range(0f, 1.5f);
                 Vector3 end = transform.position + dir * Mathf.Clamp(clearDist - 0.8f, 2.0f, 7.0f);
-                if (clearDist > 2.0f && score > bestScore && !IsNearSafeZone(end))
+                if (clearDist > 2.0f && score > bestScore)
                 {
                     bestScore = score;
                     bestDir = dir;
@@ -359,12 +354,6 @@ namespace DemoRicochet
                     if (col.bounds.max.y <= 0.1f) continue;
                     occupied = true;
                     break;
-                }
-
-                // Не заезжаем в безопасную зону игрока
-                if (IsNearSafeZone(candidate))
-                {
-                    occupied = true;
                 }
 
                 if (!occupied && Vector3.Distance(candidate, transform.position) > 3.5f)

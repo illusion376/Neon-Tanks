@@ -64,12 +64,10 @@ namespace DemoRicochet
         private bool _levelWon;
         private int _enemiesLeft;
         private GameObject _levelIntro;
-        private GameObject _safeZoneBanner;
         private const float LevelIntroDuration = 5f;
 
         // Подсказка управления WASD + ЛКМ (только ПК, 1-й уровень / бесконечный бой)
         private GameObject _controlsHint;
-        private RectTransform _controlsHintRect;
         private CanvasGroup _controlsHintGroup;
         private Image _keyW;
         private Image _keyA;
@@ -511,11 +509,6 @@ namespace DemoRicochet
             if (_playerHealth == null) return;
 
             bool alive = !_playerHealth.IsDead;
-            bool inSafeZone = alive && !_isMatchFinished && _playerTank != null && LevelDefinition.IsInSafeZone(_playerTank.transform.position);
-            if (_safeZoneBanner != null && _safeZoneBanner.activeSelf != inSafeZone)
-            {
-                _safeZoneBanner.SetActive(inSafeZone);
-            }
 
             bool showRespawn = !alive && !_isMatchFinished;
             if (_respawnBanner != null && _respawnBanner.activeSelf != showRespawn)
@@ -594,12 +587,6 @@ namespace DemoRicochet
 
             _respawnBanner = BuildRespawnBanner(root);
             _respawnBanner.SetActive(false);
-
-            Image safeImg = CreateImage("SafeZoneBanner", root, new Vector2(420f, 40f), new Vector2(0.5f, 0f), new Vector2(0f, 58f), PanelBg);
-            CreateImage("SafeAccent", safeImg.transform, new Vector2(420f, 2f), new Vector2(0.5f, 1f), new Vector2(0f, -1f), Mint);
-            CreateLabel("БЕЗОПАСНАЯ ЗОНА  •  первый выстрел отключит защиту", safeImg.transform, 14, Mint, new Vector2(400f, 34f), new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
-            _safeZoneBanner = safeImg.gameObject;
-            _safeZoneBanner.SetActive(false);
 
             bool showControlsHint = !MobileControls.IsTouchMode &&
                 (!LevelManager.IsActive || LevelManager.IsEndless || LevelManager.CurrentIndex == 0);
@@ -867,8 +854,7 @@ namespace DemoRicochet
 
         private GameObject BuildControlsHint(Transform parent)
         {
-            Image panel = CreateImage("ControlsHint", parent, new Vector2(420f, 102f), new Vector2(0.5f, 0f), new Vector2(0f, 136f), PanelBg);
-            _controlsHintRect = panel.rectTransform;
+            Image panel = CreateImage("ControlsHint", parent, new Vector2(420f, 102f), new Vector2(0.5f, 0f), new Vector2(0f, 74f), PanelBg);
             _controlsHintGroup = panel.gameObject.AddComponent<CanvasGroup>();
             _controlsHintGroup.alpha = 1f;
 
@@ -936,14 +922,6 @@ namespace DemoRicochet
             SetKeycapHighlight(_keyD, d, Cyan);
             SetKeycapHighlight(_keyFire, lmb, Magenta);
             SetKeycapHighlight(_keySpace, space, Magenta);
-
-            if (_controlsHintRect != null)
-            {
-                float targetY = (_safeZoneBanner != null && _safeZoneBanner.activeSelf) ? 136f : 74f;
-                Vector2 pos = _controlsHintRect.anchoredPosition;
-                pos.y = Mathf.Lerp(pos.y, targetY, Mathf.Clamp01(Time.deltaTime * 10f));
-                _controlsHintRect.anchoredPosition = pos;
-            }
 
             bool alive = _playerHealth == null || !_playerHealth.IsDead;
             if (alive && (w || a || s || d))

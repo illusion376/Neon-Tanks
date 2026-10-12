@@ -4,7 +4,7 @@ namespace DemoRicochet
 {
     /// <summary>
     /// Корневой компонент префаба уровня. Внутри префаба:
-    ///   PlayerSpawn — точка старта игрока (вокруг неё безопасная зона);
+    ///   PlayerSpawn — точка старта игрока;
     ///   Obstacles — префабы укрытий из Assets/Prefabs/Obstacles;
     ///   Enemies — префабы врагов из Assets/Prefabs/Enemies (HP — в TankHealth, скорость и стрельба — в EnemyTankAI);
     ///   Pickups — префабы бонусов из Assets/Prefabs/Pickups (одноразовые).
@@ -23,8 +23,6 @@ namespace DemoRicochet
         [Header("Игрок")]
         public Transform playerSpawn;
         [Min(1)] public int playerLives = 3;
-        [Tooltip("Радиус стартовой зоны: в ней по игроку не стреляют, но и сам он стрелять не может")]
-        public float safeZoneRadius = 2.2f;
 
         [Header("Бонусы за убийства")]
         [Tooltip("Сколько бонусов максимум выпадет рядом с игроком за весь уровень")]
@@ -35,17 +33,6 @@ namespace DemoRicochet
         public static LevelDefinition Active { get; private set; }
 
         public Vector3 PlayerSpawnPosition => playerSpawn != null ? playerSpawn.position : transform.position;
-
-        public bool IsSafeZoneActive => false;
-
-        public void SetSafeZoneActive(bool active)
-        {
-        }
-
-        public static bool IsInSafeZone(Vector3 position)
-        {
-            return false;
-        }
 
         private void Awake()
         {
