@@ -18,6 +18,7 @@ namespace DemoRicochet
         private static readonly Color Muted = new Color(0.49f, 0.61f, 0.71f);
         private static readonly Color PanelBg = new Color(0.020f, 0.036f, 0.055f, 0.86f);
         private static readonly Color OverlayBg = new Color(0.012f, 0.022f, 0.038f, 0.92f);
+        private static readonly Color VictoryBg = new Color(0.004f, 0.020f, 0.030f, 0.96f);
 
         [Header("Правила матча")]
         public int targetScore = 5;
@@ -53,6 +54,7 @@ namespace DemoRicochet
         private Text _defeatSubheading;
         private Text _defeatButtonText;
         private GameObject _victoryOverlay;
+        private RectTransform _victoryLayout;
         private Text _victoryStatus;
         private Text _victoryHeading;
         private Text _victoryTime;
@@ -213,6 +215,15 @@ namespace DemoRicochet
             if (_mobileControls != null && _playerTank != null)
             {
                 _mobileControls.SetFireCooldown(_playerTank.FireCooldownProgress);
+            }
+
+            if (_victoryLayout != null && _victoryLayout.gameObject.activeInHierarchy)
+            {
+                RectTransform safeArea = (RectTransform)_victoryLayout.parent;
+                Vector2 available = safeArea.rect.size - Vector2.one * 32f;
+                Vector2 size = _victoryLayout.rect.size;
+                float scale = Mathf.Min(720f / size.x, Mathf.Min(available.x / size.x, available.y / size.y));
+                _victoryLayout.localScale = Vector3.one * Mathf.Max(0.1f, scale);
             }
         }
 
@@ -493,11 +504,11 @@ namespace DemoRicochet
             if (showRespawn && _respawnText != null)
             {
                 int sec = Mathf.Max(1, Mathf.CeilToInt(_playerHealth.RespawnRemaining));
-                _respawnText.text = $"ВОЗВРАЩЕНИЕ В БОЙ  /  {sec}";
 
                 // Звук: тик на каждую смену цифры. Первый тик пропускаем — в этот момент звучит взрыв
                 if (sec != _lastRespawnSecond)
                 {
+                    _respawnText.text = sec.ToString();
                     if (_lastRespawnSecond != -1) NeonAudio.RespawnTick();
                     _lastRespawnSecond = sec;
                 }
@@ -560,10 +571,7 @@ namespace DemoRicochet
             Button pauseBtn = CreateButton("PauseButton", root, "", new Vector2(58f, 58f), new Vector2(1f, 1f), new Vector2(-51f, -47f), Color.white, () => SetPaused(!_isPaused));
             pauseBtn.image.sprite = Resources.Load<Sprite>("NeonTanks/UI/PauseButton");
 
-            Image respawnImg = CreateImage("RespawnBanner", root, new Vector2(360f, 48f), new Vector2(0.5f, 0.5f), new Vector2(0f, -84f), PanelBg);
-            CreateImage("RespawnAccent", respawnImg.transform, new Vector2(360f, 2f), new Vector2(0.5f, 1f), new Vector2(0f, -1f), Cyan);
-            _respawnText = CreateLabel("ВОЗВРАЩЕНИЕ В БОЙ  /  2", respawnImg.transform, 17, White, new Vector2(340f, 40f), new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
-            _respawnBanner = respawnImg.gameObject;
+            _respawnBanner = BuildRespawnBanner(root);
             _respawnBanner.SetActive(false);
 
             Image safeImg = CreateImage("SafeZoneBanner", root, new Vector2(420f, 40f), new Vector2(0.5f, 0f), new Vector2(0f, 58f), PanelBg);
@@ -589,6 +597,47 @@ namespace DemoRicochet
                 _victoryOverlay = BuildVictoryOverlay(canvasRoot);
                 _victoryOverlay.SetActive(false);
             }
+        }
+
+        private GameObject BuildRespawnBanner(Transform parent)
+        {
+            Vector2 center = new Vector2(0.5f, 0.5f);
+            Image panel = CreateImage("RespawnBanner", parent, new Vector2(560f, 84f), center,
+                new Vector2(0f, -84f), new Color(0.004f, 0.012f, 0.022f, 0.90f));
+            CreateRespawnLine("RespawnAccent", panel.transform, new Vector2(540f, 2f), new Vector2(10f, 44f));
+
+            Image badge = CreateImage("RespawnCountdown", panel.transform, new Vector2(90f, 90f), center,
+                new Vector2(-220f, 0f), new Color(0.006f, 0.022f, 0.032f, 0.94f));
+            CreateRespawnLine("Top", badge.transform, new Vector2(90f, 3f), new Vector2(0f, 44f));
+            CreateRespawnLine("Bottom", badge.transform, new Vector2(90f, 3f), new Vector2(0f, -44f));
+            CreateRespawnLine("Left", badge.transform, new Vector2(3f, 90f), new Vector2(-44f, 0f));
+            CreateRespawnLine("Right", badge.transform, new Vector2(3f, 90f), new Vector2(44f, 0f));
+            CreateRespawnLine("TopTick", badge.transform, new Vector2(66f, 3f), new Vector2(0f, 59f));
+            CreateRespawnLine("BottomTick", badge.transform, new Vector2(66f, 3f), new Vector2(0f, -59f));
+
+            _respawnText = CreateLabel("2", badge.transform, 52, Cyan, new Vector2(76f, 78f),
+                center, Vector2.zero, FontStyle.Bold);
+            _respawnText.resizeTextForBestFit = true;
+            _respawnText.resizeTextMinSize = 24;
+            _respawnText.resizeTextMaxSize = 52;
+            AddRespawnGlow(_respawnText);
+
+            CreateLabel("ВОЗВРАЩЕНИЕ В БОЙ", panel.transform, 26, White, new Vector2(410f, 54f),
+                center, new Vector2(55f, 0f), FontStyle.Bold);
+            return panel.gameObject;
+        }
+
+        private static void CreateRespawnLine(string name, Transform parent, Vector2 size, Vector2 position)
+        {
+            Image line = CreateImage(name, parent, size, new Vector2(0.5f, 0.5f), position, Cyan);
+            AddRespawnGlow(line);
+        }
+
+        private static void AddRespawnGlow(Graphic graphic)
+        {
+            Outline glow = graphic.gameObject.AddComponent<Outline>();
+            glow.effectColor = new Color(Cyan.r, Cyan.g, Cyan.b, 0.18f);
+            glow.effectDistance = new Vector2(2f, -2f);
         }
 
         private GameObject BuildDefeatOverlay(Transform parent)
@@ -630,68 +679,82 @@ namespace DemoRicochet
         private GameObject BuildVictoryOverlay(Transform parent)
         {
             Image backdrop = CreateImage("VictoryOverlay", parent, Vector2.zero, Vector2.zero, Vector2.zero,
-                new Color(0.004f, 0.013f, 0.023f, 0.74f));
+                new Color(0.004f, 0.013f, 0.023f, 0.66f));
             backdrop.raycastTarget = true;
             backdrop.rectTransform.anchorMax = Vector2.one;
 
             RectTransform safeArea = CreateRect("SafeArea", backdrop.transform, Vector2.zero, Vector2.zero, Vector2.zero);
             safeArea.gameObject.AddComponent<UISafeArea>();
-            RectTransform layout = CreateRect("VictoryLayout", safeArea, new Vector2(720f, 426f),
+            RectTransform layout = CreateRect("VictoryLayout", safeArea, new Vector2(1160f, 656f),
                 new Vector2(0.5f, 0.5f), Vector2.zero);
+            layout.localScale = Vector3.one * (720f / layout.sizeDelta.x);
+            _victoryLayout = layout;
 
-            Image panel = CreateImage("VictoryCard", layout, new Vector2(720f, 340f),
-                new Vector2(0.5f, 1f), new Vector2(0f, -170f), Color.white);
-            panel.sprite = Resources.Load<Sprite>("NeonTanks/UI/VictoryPanel");
-            panel.type = Image.Type.Sliced;
+            // Ровная UI-панель: в старом VictoryPanel были частые горизонтальные полосы.
+            Image panel = CreateImage("VictoryCard", layout, new Vector2(1160f, 532f),
+                new Vector2(0.5f, 1f), new Vector2(0f, -266f), VictoryBg);
             Transform card = panel.transform;
+            CreateImage("TopAccent", card, new Vector2(1152f, 3f),
+                new Vector2(0.5f, 1f), new Vector2(0f, -1.5f), Cyan);
+            CreateImage("BottomAccent", card, new Vector2(1152f, 3f),
+                new Vector2(0.5f, 0f), new Vector2(0f, 1.5f), Magenta);
+            Color sideTint = new Color(Cyan.r, Cyan.g, Cyan.b, 0.28f);
+            CreateImage("LeftBorder", card, new Vector2(1f, 532f),
+                new Vector2(0f, 0.5f), new Vector2(0.5f, 0f), sideTint);
+            CreateImage("RightBorder", card, new Vector2(1f, 532f),
+                new Vector2(1f, 0.5f), new Vector2(-0.5f, 0f), sideTint);
 
-            _victoryStatus = CreateLabel("", card, 13, Mint, new Vector2(440f, 24f),
-                new Vector2(0f, 1f), new Vector2(264f, -36f), FontStyle.Bold);
+            _victoryStatus = CreateLabel("", card, 22, Mint, new Vector2(750f, 36f),
+                new Vector2(0f, 1f), new Vector2(439f, -54f), FontStyle.Bold);
             _victoryStatus.alignment = TextAnchor.MiddleLeft;
 
-            _victoryHeading = CreateLabel("", card, 52, Cyan, new Vector2(452f, 124f),
-                new Vector2(0f, 1f), new Vector2(270f, -122f), FontStyle.Bold);
+            _victoryHeading = CreateLabel("", card, 82, Cyan, new Vector2(660f, 204f),
+                new Vector2(0f, 1f), new Vector2(394f, -185f), FontStyle.Bold);
             _victoryHeading.alignment = TextAnchor.MiddleLeft;
             _victoryHeading.lineSpacing = 0.95f;
 
-            Image badge = CreateImage("TankBadge", card, new Vector2(192f, 192f),
-                new Vector2(1f, 1f), new Vector2(-118f, -122f), Color.white);
+            Image badge = CreateImage("TankBadge", card, new Vector2(288f, 288f),
+                new Vector2(1f, 1f), new Vector2(-194f, -187f), Color.white);
             badge.sprite = Resources.Load<Sprite>("NeonTanks/UI/VictoryBadge");
 
-            Text timeLabel = CreateLabel("Время прохождения", card, 18, Muted, new Vector2(218f, 28f),
-                new Vector2(0f, 1f), new Vector2(153f, -197f));
+            Text timeLabel = CreateLabel("Время прохождения", card, 28, Muted, new Vector2(324f, 44f),
+                new Vector2(0f, 1f), new Vector2(226f, -312f));
             timeLabel.alignment = TextAnchor.MiddleLeft;
-            _victoryTime = CreateLabel("", card, 20, White, new Vector2(128f, 28f),
-                new Vector2(0f, 1f), new Vector2(318f, -197f), FontStyle.Bold);
+            _victoryTime = CreateLabel("", card, 34, White, new Vector2(160f, 44f),
+                new Vector2(0f, 1f), new Vector2(500f, -312f), FontStyle.Bold);
             _victoryTime.alignment = TextAnchor.MiddleLeft;
-            CreateImage("Divider", card, new Vector2(632f, 1f),
-                new Vector2(0f, 1f), new Vector2(360f, -232f), new Color(0.15f, 0.38f, 0.46f, 0.38f));
-            CreateLabel("ПРОГРЕСС КАМПАНИИ", card, 12, Muted, new Vector2(208f, 24f),
-                new Vector2(0f, 1f), new Vector2(148f, -283f), FontStyle.Bold).alignment = TextAnchor.MiddleLeft;
+            CreateImage("Divider", card, new Vector2(480f, 1f),
+                new Vector2(0f, 1f), new Vector2(304f, -368f), new Color(0.15f, 0.38f, 0.46f, 0.38f));
+            CreateLabel("ПРОГРЕСС КАМПАНИИ", card, 20, Muted, new Vector2(292f, 36f),
+                new Vector2(0f, 1f), new Vector2(210f, -449f), FontStyle.Bold).alignment = TextAnchor.MiddleLeft;
             BuildVictoryProgress(card);
 
             _victoryButtonText = CreateVictoryButton(layout, "NextLevelButton", "СЛЕДУЮЩИЙ УРОВЕНЬ", "VictoryNext",
-                new Vector2(410f, 58f), new Vector2(-124f, 38f), "ENTER", new Color(0.018f, 0.08f, 0.12f), OnResultPrimaryButton);
+                new Vector2(660f, 86f), new Vector2(-205f, 44f), "ENTER", new Color(0.018f, 0.08f, 0.12f), OnResultPrimaryButton);
             CreateVictoryButton(layout, "RestartButton", "ЗАНОВО", "VictoryRestart",
-                new Vector2(230f, 58f), new Vector2(214f, 38f), "R", White, RestartMatch);
+                new Vector2(364f, 86f), new Vector2(350f, 44f), "R", White, RestartMatch);
             return backdrop.gameObject;
         }
 
         private void BuildVictoryProgress(Transform card)
         {
             int count = LevelManager.LevelCount;
-            float spacing = Mathf.Min(88f, 360f / Mathf.Max(1, count - 1));
-            float nodeSize = Mathf.Min(44f, spacing * 0.7f);
-            float startX = 476f - spacing * (count - 1) * 0.5f;
+            float spacing = Mathf.Min(144f, 576f / Mathf.Max(1, count - 1));
+            float nodeSize = Mathf.Min(64f, spacing * 0.7f);
+            float startX = 772f - spacing * (count - 1) * 0.5f;
             Sprite ringSprite = Resources.Load<Sprite>("NeonTanks/UI/VictoryNode");
             for (int i = 0; i < count; i++)
             {
                 Color color = i <= LevelManager.CurrentIndex ? Cyan : new Color(0.23f, 0.42f, 0.51f);
-                Vector2 position = new Vector2(startX + i * spacing, -283f);
+                Vector2 position = new Vector2(startX + i * spacing, -449f);
                 Image node = CreateImage("Stage_" + (i + 1), card, Vector2.one * nodeSize,
                     new Vector2(0f, 1f), position, color);
                 node.sprite = ringSprite;
-                CreateLabel((i + 1).ToString("00"), node.transform, Mathf.RoundToInt(nodeSize * 0.34f),
+                // Два обычных Image образуют кольцо с чистым тёмным центром.
+                Image fill = CreateImage("Fill", node.transform, Vector2.one * Mathf.Max(1f, nodeSize - 4f),
+                    new Vector2(0.5f, 0.5f), Vector2.zero, new Color(VictoryBg.r, VictoryBg.g, VictoryBg.b, 1f));
+                fill.sprite = ringSprite;
+                CreateLabel((i + 1).ToString("00"), node.transform, Mathf.RoundToInt(nodeSize * 0.36f),
                     i <= LevelManager.CurrentIndex ? Mint : Muted, Vector2.one * nodeSize,
                     new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
 
@@ -701,7 +764,7 @@ namespace DemoRicochet
                 for (int dot = 1; dot <= 4; dot++)
                 {
                     float x = position.x + Mathf.Lerp(nodeSize * 0.5f, spacing - nodeSize * 0.5f, dot / 5f);
-                    CreateImage("StageLink_" + i + "_" + dot, card, new Vector2(3f, 2f),
+                    CreateImage("StageLink_" + i + "_" + dot, card, new Vector2(5f, 3f),
                         new Vector2(0f, 1f), new Vector2(x, position.y), linkColor);
                 }
             }
@@ -721,18 +784,18 @@ namespace DemoRicochet
             button.colors = colors;
 
             bool showKey = !MobileControls.IsTouchMode;
-            Text text = CreateLabel(label, button.transform, 20, textColor, new Vector2(size.x - (showKey ? 94f : 32f), size.y),
-                new Vector2(0.5f, 0.5f), new Vector2(showKey ? -30f : 0f, 0f), FontStyle.Bold);
+            Text text = CreateLabel(label, button.transform, 32, textColor, new Vector2(size.x - (showKey ? 144f : 40f), size.y),
+                new Vector2(0.5f, 0.5f), new Vector2(showKey ? -48f : 0f, 0f), FontStyle.Bold);
             text.resizeTextForBestFit = true;
-            text.resizeTextMinSize = 14;
-            text.resizeTextMaxSize = 20;
+            text.resizeTextMinSize = 22;
+            text.resizeTextMaxSize = 32;
             if (showKey)
             {
-                Image keycap = CreateImage("KeyHint", button.transform, new Vector2(56f, 36f),
-                    new Vector2(1f, 0.5f), new Vector2(-42f, 0f), Color.white);
+                Image keycap = CreateImage("KeyHint", button.transform, new Vector2(86f, 52f),
+                    new Vector2(1f, 0.5f), new Vector2(-65f, 0f), Color.white);
                 keycap.sprite = Resources.Load<Sprite>("NeonTanks/UI/VictoryKeycap");
                 keycap.type = Image.Type.Sliced;
-                CreateLabel(key, keycap.transform, 11, White, new Vector2(52f, 32f),
+                CreateLabel(key, keycap.transform, 18, White, new Vector2(80f, 48f),
                     new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
             }
             return text;

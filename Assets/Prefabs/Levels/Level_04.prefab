@@ -395,7 +395,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2257570674327882950, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: fireInterval
-      value: 2.4
+      value: 1.2
       objectReference: {fileID: 0}
     - target: {fileID: 2257570674327882950, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: useRicochetShots
@@ -403,7 +403,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2613997627055087996, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: m_Name
-      value: Enemy_Tank (3)
+      value: Enemy_Turret5
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -469,7 +469,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2257570674327882950, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: fireInterval
-      value: 2.4
+      value: 1.2
       objectReference: {fileID: 0}
     - target: {fileID: 2257570674327882950, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: useRicochetShots
@@ -477,7 +477,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2613997627055087996, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: m_Name
-      value: Enemy_Tank
+      value: Enemy_Turret3
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -693,7 +693,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 4343764102791221693, guid: f0417da4910d5794ea7fe51ca4f02d75, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -15
+      value: -14.17
       objectReference: {fileID: 0}
     - target: {fileID: 4343764102791221693, guid: f0417da4910d5794ea7fe51ca4f02d75, type: 3}
       propertyPath: m_LocalPosition.y
@@ -985,7 +985,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2257570674327882950, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: fireInterval
-      value: 2.4
+      value: 1.2
       objectReference: {fileID: 0}
     - target: {fileID: 2257570674327882950, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: useRicochetShots
@@ -993,7 +993,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2613997627055087996, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: m_Name
-      value: Enemy_Tank (2)
+      value: Enemy_Turret6
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1139,7 +1139,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 3476268900741364062, guid: 0e3d8d1f2089109489ebd3e8f9f1fb1b, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -12
+      value: -12.24
       objectReference: {fileID: 0}
     - target: {fileID: 3476268900741364062, guid: 0e3d8d1f2089109489ebd3e8f9f1fb1b, type: 3}
       propertyPath: m_LocalPosition.y
@@ -1435,7 +1435,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2613997627055087996, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: m_Name
-      value: Enemy_Tank
+      value: Enemy_Tank3
       objectReference: {fileID: 0}
     - target: {fileID: 4291813572578591466, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: maxHealth
@@ -1637,7 +1637,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2613997627055087996, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: m_Name
-      value: Enemy_Tank
+      value: Enemy_Tank2
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1663,7 +1663,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2288772900257315164, guid: 9ef081951665923459c0220632d7ea1b, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -10.59
+      value: -10.46
       objectReference: {fileID: 0}
     - target: {fileID: 2288772900257315164, guid: 9ef081951665923459c0220632d7ea1b, type: 3}
       propertyPath: m_LocalPosition.y
@@ -1671,11 +1671,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2288772900257315164, guid: 9ef081951665923459c0220632d7ea1b, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -7.01
+      value: -5.88
       objectReference: {fileID: 0}
     - target: {fileID: 2288772900257315164, guid: 9ef081951665923459c0220632d7ea1b, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.7071068
+      value: 0.92387956
       objectReference: {fileID: 0}
     - target: {fileID: 2288772900257315164, guid: 9ef081951665923459c0220632d7ea1b, type: 3}
       propertyPath: m_LocalRotation.x
@@ -1683,7 +1683,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2288772900257315164, guid: 9ef081951665923459c0220632d7ea1b, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.7071068
+      value: -0.38268343
       objectReference: {fileID: 0}
     - target: {fileID: 2288772900257315164, guid: 9ef081951665923459c0220632d7ea1b, type: 3}
       propertyPath: m_LocalRotation.z
@@ -1695,7 +1695,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2288772900257315164, guid: 9ef081951665923459c0220632d7ea1b, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 90
+      value: -45
       objectReference: {fileID: 0}
     - target: {fileID: 2288772900257315164, guid: 9ef081951665923459c0220632d7ea1b, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
@@ -1721,7 +1721,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 4343764102791221693, guid: f0417da4910d5794ea7fe51ca4f02d75, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -7
+      value: -7.38
       objectReference: {fileID: 0}
     - target: {fileID: 4343764102791221693, guid: f0417da4910d5794ea7fe51ca4f02d75, type: 3}
       propertyPath: m_LocalPosition.y
@@ -2075,7 +2075,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2257570674327882950, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: fireInterval
-      value: 2.4
+      value: 1.2
       objectReference: {fileID: 0}
     - target: {fileID: 2257570674327882950, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: useRicochetShots
@@ -2083,7 +2083,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2613997627055087996, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: m_Name
-      value: Enemy_Tank (1)
+      value: Enemy_Turret4
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -2149,7 +2149,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2257570674327882950, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: fireInterval
-      value: 2.4
+      value: 1.2
       objectReference: {fileID: 0}
     - target: {fileID: 2257570674327882950, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: useRicochetShots
@@ -2157,7 +2157,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2613997627055087996, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: m_Name
-      value: Enemy_Tank
+      value: Enemy_Turret2
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -2179,7 +2179,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 4343764102791221693, guid: f0417da4910d5794ea7fe51ca4f02d75, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 3
+      value: 3.33
       objectReference: {fileID: 0}
     - target: {fileID: 4343764102791221693, guid: f0417da4910d5794ea7fe51ca4f02d75, type: 3}
       propertyPath: m_LocalPosition.y
@@ -2365,7 +2365,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 4343764102791221693, guid: f0417da4910d5794ea7fe51ca4f02d75, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 11
+      value: 11.54
       objectReference: {fileID: 0}
     - target: {fileID: 4343764102791221693, guid: f0417da4910d5794ea7fe51ca4f02d75, type: 3}
       propertyPath: m_LocalPosition.y
@@ -2537,7 +2537,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2613997627055087996, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: m_Name
-      value: Enemy_Tank
+      value: Enemy_Tank4
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

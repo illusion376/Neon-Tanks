@@ -209,7 +209,7 @@ MonoBehaviour:
   arenaWidth: 36
   arenaDepth: 18
   playerSpawn: {fileID: 953131625347557925}
-  playerLives: 3
+  playerLives: 1
   safeZoneRadius: 2.2
   killDropLimit: 3
   killDropChance: 0.6
@@ -772,6 +772,18 @@ PrefabInstance:
     - target: {fileID: 2613997627055087996, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: m_Name
       value: Enemy_Tank
+      objectReference: {fileID: 0}
+    - target: {fileID: 4291813572578591466, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
+      propertyPath: shieldCharges
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4291813572578591466, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
+      propertyPath: rapidFireTimer
+      value: 1111
+      objectReference: {fileID: 0}
+    - target: {fileID: 4291813572578591466, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
+      propertyPath: speedBoostTimer
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1553,6 +1565,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Enemy_Tank
       objectReference: {fileID: 0}
+    - target: {fileID: 4291813572578591466, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
+      propertyPath: speedBoostTimer
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -1809,6 +1825,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Enemy_Tank
       objectReference: {fileID: 0}
+    - target: {fileID: 4291813572578591466, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
+      propertyPath: speedBoostTimer
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -2002,6 +2022,14 @@ PrefabInstance:
     - target: {fileID: 2613997627055087996, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
       propertyPath: m_Name
       value: Enemy_Tank
+      objectReference: {fileID: 0}
+    - target: {fileID: 4291813572578591466, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
+      propertyPath: shieldCharges
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4291813572578591466, guid: 3a1bfce1f6f98624aa03b72f3cec9e59, type: 3}
+      propertyPath: speedBoostTimer
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

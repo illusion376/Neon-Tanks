@@ -3,7 +3,7 @@ Shader "NeonRicochet/NeonGround"
     Properties
     {
         [HDR] _Color ("Tint", Color) = (0,1,1,1)
-        _Mode ("0 glow / 1 ring / 2 solid / 3 beam / 4 spark / 5 shadow / 6 segments / 7 shockwave / 8 bounce marker", Float) = 0
+        _Mode ("0 glow / 1 ring / 2 solid / 3 beam / 4 spark / 5 shadow / 6 segments / 7 shockwave / 8 bounce marker / 9 underglow", Float) = 0
         _DashFill ("Segment fill", Range(0, 1)) = 0.65
         _DashAspect ("Segment period / line width", Float) = 3
         _DashOutline ("Hollow segments", Range(0, 1)) = 1
@@ -75,7 +75,7 @@ Shader "NeonRicochet/NeonGround"
                     // Fade out before the quad border, including the outer halo.
                     a=saturate(core+glow)*(1-smoothstep(.94,1,radius));
                 }
-                else
+                else if(_Mode<8.5)
                 {
                     // Small continuous circle at the predicted bounce; anti-alias for mobile screens.
                     float edge=abs(radius-.72);
@@ -83,6 +83,15 @@ Shader "NeonRicochet/NeonGround"
                     float core=1-smoothstep(.07-aa,.07+aa,edge);
                     float glow=(1-smoothstep(.07,.26,edge))*.14;
                     a=saturate(core+glow)*(1-smoothstep(.92,1,radius));
+                }
+                else
+                {
+                    // Rounded pools beneath the chassis and tracks; no visible quad silhouette.
+                    float chassis=exp2(-(p.x*p.x*3.5+p.y*p.y*2.2));
+                    float trackOffset=abs(p.x)-.42;
+                    float tracks=exp2(-(trackOffset*trackOffset*28+p.y*p.y*4));
+                    float fade=1-smoothstep(.45,.92,radius);
+                    a=saturate(chassis*.32+tracks*.58)*fade;
                 }
                 return half4(_Color.rgb*i.color.rgb,a*saturate(_Color.a*i.color.a));
             }

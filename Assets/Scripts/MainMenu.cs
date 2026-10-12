@@ -10,6 +10,7 @@ namespace DemoRicochet
         private const string ArtPath = "NeonTanks/UI/";
         private Font _font;
         private Button _playButton;
+        private RectTransform _layout;
 
         private void Awake()
         {
@@ -40,18 +41,30 @@ namespace DemoRicochet
             RectTransform safeArea = CreateRect("SafeArea", canvasObj.transform, Vector2.zero, Vector2.zero);
             safeArea.gameObject.AddComponent<UISafeArea>();
 
-            Image logo = CreateImage("MainMenuLogo", safeArea, new Vector2(552f, 208f), new Vector2(0f, 188f));
+            _layout = CreateRect("MenuLayout", safeArea, new Vector2(560f, 520f), Vector2.zero);
+            Image logo = CreateImage("MainMenuLogo", _layout, new Vector2(500f, 192f), new Vector2(0f, 136f));
             logo.preserveAspect = true;
 
-            Image panel = CreateImage("MainMenuPanel", safeArea, new Vector2(480f, 350f), new Vector2(0f, -105f));
-            _playButton = CreateMenuButton(panel.transform, "Play", "ИГРАТЬ", "MainMenuButtonCyan", 96f, 30, LevelManager.StartCampaign);
-            CreateMenuButton(panel.transform, "Endless", "БЕСКОНЕЧНЫЙ БОЙ", "MainMenuButtonMagenta", 0f, 23, LevelManager.StartEndless);
-            CreateMenuButton(panel.transform, "Quit", "ВЫХОД", "MainMenuButtonMagenta", -96f, 30, QuitGame);
+            _playButton = CreateMenuButton(_layout, "Play", "ИГРАТЬ", "MainMenuButtonCyan",
+                -23f, 30, Color.white, new Color(0f, 0.92f, 1f), LevelManager.StartCampaign);
+            CreateMenuButton(_layout, "Endless", "БЕСКОНЕЧНЫЙ БОЙ", "MainMenuButtonMagenta",
+                -115f, 23, Color.white, new Color(0.9f, 0.25f, 1f), LevelManager.StartEndless);
+            CreateMenuButton(_layout, "Quit", "ВЫХОД", "MainMenuButtonMagenta",
+                -203f, 30, new Color(1f, 0.5f, 0.6f), new Color(1f, 0.1f, 0.6f), QuitGame);
         }
 
         private void Start()
         {
             EventSystem.current.SetSelectedGameObject(_playButton.gameObject);
+        }
+
+        private void LateUpdate()
+        {
+            RectTransform safeArea = (RectTransform)_layout.parent;
+            Vector2 available = safeArea.rect.size - Vector2.one * 32f;
+            Vector2 size = _layout.sizeDelta;
+            float scale = Mathf.Min(1f, Mathf.Min(available.x / size.x, available.y / size.y));
+            _layout.localScale = Vector3.one * Mathf.Max(0.1f, scale);
         }
 
         private static void QuitGame()
@@ -65,16 +78,20 @@ namespace DemoRicochet
         }
 
         private Button CreateMenuButton(Transform parent, string name, string label, string art,
-            float y, int fontSize, UnityEngine.Events.UnityAction action)
+            float y, int fontSize, Color tint, Color accent, UnityEngine.Events.UnityAction action)
         {
-            Image image = CreateImage(art, parent, new Vector2(402f, 74f), new Vector2(0f, y));
+            Image image = CreateImage(art, parent, new Vector2(388f, 72f), new Vector2(0f, y));
             image.name = name + "Button";
+            image.color = tint;
             image.raycastTarget = true;
+            Outline glow = image.gameObject.AddComponent<Outline>();
+            glow.effectColor = new Color(accent.r, accent.g, accent.b, 0.22f);
+            glow.effectDistance = new Vector2(3f, -3f);
             Button button = image.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
             button.navigation = new Navigation { mode = Navigation.Mode.Vertical };
             ColorBlock colors = button.colors;
-            colors.normalColor = new Color(0.86f, 0.86f, 0.86f);
+            colors.normalColor = new Color(0.92f, 0.92f, 0.92f);
             colors.highlightedColor = Color.white;
             colors.selectedColor = Color.white;
             colors.pressedColor = new Color(0.65f, 0.65f, 0.65f);
@@ -83,18 +100,21 @@ namespace DemoRicochet
             button.onClick.AddListener(NeonAudio.UiClick);
             button.onClick.AddListener(action);
 
-            RectTransform labelRect = CreateRect("Label", button.transform, new Vector2(338f, 58f), new Vector2(-12f, 0f));
+            RectTransform labelRect = CreateRect("Label", button.transform, new Vector2(330f, 56f), new Vector2(-8f, 0f));
             Text text = labelRect.gameObject.AddComponent<Text>();
             text.font = _font;
             text.text = label;
             text.fontSize = fontSize;
             text.fontStyle = FontStyle.Bold;
+            text.resizeTextForBestFit = true;
+            text.resizeTextMinSize = 18;
+            text.resizeTextMaxSize = fontSize;
             text.alignment = TextAnchor.MiddleCenter;
             text.color = Color.white;
             text.raycastTarget = false;
 
-            Image arrow = CreateImage("MainMenuArrow", button.transform, new Vector2(14f, 24f), new Vector2(173f, 0f));
-            arrow.color = art == "MainMenuButtonCyan" ? new Color(0.5f, 1f, 1f) : new Color(1f, 0.7f, 0.9f);
+            Image arrow = CreateImage("MainMenuArrow", button.transform, new Vector2(12f, 22f), new Vector2(164f, 0f));
+            arrow.color = accent;
             return button;
         }
 
