@@ -210,7 +210,6 @@ MonoBehaviour:
   arenaDepth: 18
   playerSpawn: {fileID: 953131625347557925}
   playerLives: 1
-  safeZoneRadius: 2.2
   killDropLimit: 3
   killDropChance: 0.6
 --- !u!1001 &148857747165241966
@@ -813,7 +812,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1494472032106876779, guid: 8c7cfb75d5e1ac741b9c5a28d420714e, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -5.28
+      value: -4.56
       objectReference: {fileID: 0}
     - target: {fileID: 1494472032106876779, guid: 8c7cfb75d5e1ac741b9c5a28d420714e, type: 3}
       propertyPath: m_LocalRotation.w
