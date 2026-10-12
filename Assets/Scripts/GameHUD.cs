@@ -67,6 +67,19 @@ namespace DemoRicochet
         private GameObject _safeZoneBanner;
         private const float LevelIntroDuration = 5f;
 
+        // Подсказка управления WASD + ЛКМ (только ПК, 1-й уровень / бесконечный бой)
+        private GameObject _controlsHint;
+        private RectTransform _controlsHintRect;
+        private CanvasGroup _controlsHintGroup;
+        private Image _keyW;
+        private Image _keyA;
+        private Image _keyS;
+        private Image _keyD;
+        private Image _keyFire;
+        private Image _keySpace;
+        private float _controlsMovedTime;
+        private bool _controlsDismissed;
+
         // Звук: последние показанные числа отсчётов (чтобы тикать один раз на смену цифры)
         private int _lastRespawnSecond = -1;
         private int _lastBeepSecond = -1;
@@ -207,6 +220,7 @@ namespace DemoRicochet
 
             RefreshTimerDisplay();
             RefreshPlayerStatusDisplay();
+            UpdateControlsHint();
         }
 
         private void LateUpdate()
@@ -371,6 +385,13 @@ namespace DemoRicochet
             if (_resultOverlay != null) _resultOverlay.SetActive(false);
             if (_defeatOverlay != null) _defeatOverlay.SetActive(false);
             if (_victoryOverlay != null) _victoryOverlay.SetActive(false);
+            if (_controlsHint != null)
+            {
+                _controlsMovedTime = 0f;
+                _controlsDismissed = false;
+                if (_controlsHintGroup != null) _controlsHintGroup.alpha = 1f;
+                _controlsHint.SetActive(true);
+            }
 
             RicochetBullet[] bullets = FindObjectsByType<RicochetBullet>();
             for (int i = 0; i < bullets.Length; i++)
@@ -579,6 +600,13 @@ namespace DemoRicochet
             CreateLabel("БЕЗОПАСНАЯ ЗОНА  •  первый выстрел отключит защиту", safeImg.transform, 14, Mint, new Vector2(400f, 34f), new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
             _safeZoneBanner = safeImg.gameObject;
             _safeZoneBanner.SetActive(false);
+
+            bool showControlsHint = !MobileControls.IsTouchMode &&
+                (!LevelManager.IsActive || LevelManager.IsEndless || LevelManager.CurrentIndex == 0);
+            if (showControlsHint)
+            {
+                _controlsHint = BuildControlsHint(root);
+            }
 
             _pauseOverlay = BuildPauseOverlay(canvasRoot);
             _pauseOverlay.SetActive(false);
@@ -819,7 +847,7 @@ namespace DemoRicochet
                 title = title.Substring(0, separator).TrimEnd() + "  <color=#" + ColorUtility.ToHtmlStringRGB(Cyan) + ">/  " + title.Substring(separator + 1).TrimStart() + "</color>";
             }
 
-            Text heading = CreateLabel(title, panel.transform, 26, Color.white, new Vector2(504f, 34f), new Vector2(0f, 0.5f), new Vector2(396f, 15f), FontStyle.Bold);
+            Text heading = CreateLabel(title, panel.transform, 26, Color.white, new Vector2(504f, 32f), new Vector2(0f, 0.5f), new Vector2(396f, 18f), FontStyle.Bold);
             heading.alignment = TextAnchor.MiddleLeft;
             heading.horizontalOverflow = HorizontalWrapMode.Wrap;
             heading.verticalOverflow = VerticalWrapMode.Truncate;
@@ -827,14 +855,121 @@ namespace DemoRicochet
             heading.resizeTextMinSize = 20;
             heading.resizeTextMaxSize = 26;
 
-            Text hint = CreateLabel(LevelManager.Current.hint, panel.transform, 14, new Color(0.76f, 0.80f, 0.89f), new Vector2(504f, 22f), new Vector2(0f, 0.5f), new Vector2(396f, -19f));
+            Text hint = CreateLabel(LevelManager.Current.hint, panel.transform, 14, new Color(0.76f, 0.80f, 0.89f), new Vector2(504f, 38f), new Vector2(0f, 0.5f), new Vector2(396f, -16f));
             hint.alignment = TextAnchor.MiddleLeft;
             hint.horizontalOverflow = HorizontalWrapMode.Wrap;
             hint.verticalOverflow = VerticalWrapMode.Truncate;
             hint.resizeTextForBestFit = true;
-            hint.resizeTextMinSize = 12;
+            hint.resizeTextMinSize = 11;
             hint.resizeTextMaxSize = 14;
             return panel.gameObject;
+        }
+
+        private GameObject BuildControlsHint(Transform parent)
+        {
+            Image panel = CreateImage("ControlsHint", parent, new Vector2(420f, 102f), new Vector2(0.5f, 0f), new Vector2(0f, 136f), PanelBg);
+            _controlsHintRect = panel.rectTransform;
+            _controlsHintGroup = panel.gameObject.AddComponent<CanvasGroup>();
+            _controlsHintGroup.alpha = 1f;
+
+            CreateImage("ControlsAccent", panel.transform, new Vector2(420f, 2f), new Vector2(0.5f, 1f), new Vector2(0f, -1f), Cyan);
+            CreateImage("Divider", panel.transform, new Vector2(1f, 68f), new Vector2(0.5f, 0.5f), Vector2.zero, new Color(0.15f, 0.38f, 0.46f, 0.42f));
+
+            Sprite keycapSprite = Resources.Load<Sprite>("NeonTanks/UI/VictoryKeycap");
+
+            // Левый блок: крестовина WASD
+            _keyW = CreateKeycap(panel.transform, keycapSprite, "W", new Vector2(38f, 32f), new Vector2(-104f, 22f));
+            _keyA = CreateKeycap(panel.transform, keycapSprite, "A", new Vector2(38f, 32f), new Vector2(-146f, -12f));
+            _keyS = CreateKeycap(panel.transform, keycapSprite, "S", new Vector2(38f, 32f), new Vector2(-104f, -12f));
+            _keyD = CreateKeycap(panel.transform, keycapSprite, "D", new Vector2(38f, 32f), new Vector2(-62f, -12f));
+            CreateLabel("ДВИЖЕНИЕ", panel.transform, 11, Muted, new Vector2(160f, 18f), new Vector2(0.5f, 0.5f), new Vector2(-104f, -38f), FontStyle.Bold);
+
+            // Правый блок: прицел и выстрел
+            CreateKeycap(panel.transform, keycapSprite, "МЫШЬ — ПРИЦЕЛ", new Vector2(146f, 30f), new Vector2(104f, 22f));
+            _keyFire = CreateKeycap(panel.transform, keycapSprite, "ЛКМ", new Vector2(64f, 32f), new Vector2(63f, -12f));
+            _keySpace = CreateKeycap(panel.transform, keycapSprite, "ПРОБЕЛ", new Vector2(78f, 32f), new Vector2(138f, -12f));
+            CreateLabel("ВЫСТРЕЛ", panel.transform, 11, Muted, new Vector2(160f, 18f), new Vector2(0.5f, 0.5f), new Vector2(104f, -38f), FontStyle.Bold);
+
+            return panel.gameObject;
+        }
+
+        private Image CreateKeycap(Transform parent, Sprite sprite, string label, Vector2 size, Vector2 pos)
+        {
+            Image keycap = CreateImage("Key_" + label, parent, size, new Vector2(0.5f, 0.5f), pos, new Color(0.75f, 0.90f, 0.98f, 0.88f));
+            keycap.sprite = sprite;
+            keycap.type = Image.Type.Sliced;
+            CreateLabel(label, keycap.transform, 12, White, size - new Vector2(6f, 4f), new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
+            return keycap;
+        }
+
+        private void UpdateControlsHint()
+        {
+            if (_controlsHint == null || !_controlsHint.activeSelf || _isPaused || _isMatchFinished) return;
+
+            bool w = false, a = false, s = false, d = false, lmb = false, space = false;
+#if ENABLE_INPUT_SYSTEM
+            Keyboard kb = Keyboard.current;
+            if (kb != null)
+            {
+                w = kb.wKey.isPressed || kb.upArrowKey.isPressed;
+                a = kb.aKey.isPressed || kb.leftArrowKey.isPressed;
+                s = kb.sKey.isPressed || kb.downArrowKey.isPressed;
+                d = kb.dKey.isPressed || kb.rightArrowKey.isPressed;
+                space = kb.spaceKey.isPressed;
+            }
+            if (Mouse.current != null)
+            {
+                lmb = Mouse.current.leftButton.isPressed;
+            }
+#else
+            w = Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow);
+            a = Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow);
+            s = Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow);
+            d = Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow);
+            space = Input.GetKey(KeyCode.Space);
+            lmb = Input.GetMouseButton(0);
+#endif
+
+            SetKeycapHighlight(_keyW, w, Cyan);
+            SetKeycapHighlight(_keyA, a, Cyan);
+            SetKeycapHighlight(_keyS, s, Cyan);
+            SetKeycapHighlight(_keyD, d, Cyan);
+            SetKeycapHighlight(_keyFire, lmb, Magenta);
+            SetKeycapHighlight(_keySpace, space, Magenta);
+
+            if (_controlsHintRect != null)
+            {
+                float targetY = (_safeZoneBanner != null && _safeZoneBanner.activeSelf) ? 136f : 74f;
+                Vector2 pos = _controlsHintRect.anchoredPosition;
+                pos.y = Mathf.Lerp(pos.y, targetY, Mathf.Clamp01(Time.deltaTime * 10f));
+                _controlsHintRect.anchoredPosition = pos;
+            }
+
+            bool alive = _playerHealth == null || !_playerHealth.IsDead;
+            if (alive && (w || a || s || d))
+            {
+                _controlsMovedTime += Time.deltaTime;
+                if (_controlsMovedTime >= 1.1f)
+                {
+                    _controlsDismissed = true;
+                }
+            }
+
+            if (_controlsDismissed && _controlsHintGroup != null)
+            {
+                _controlsHintGroup.alpha = Mathf.MoveTowards(_controlsHintGroup.alpha, 0f, Time.deltaTime * 1.8f);
+                if (_controlsHintGroup.alpha <= 0.001f)
+                {
+                    _controlsHint.SetActive(false);
+                }
+            }
+        }
+
+        private static void SetKeycapHighlight(Image keycap, bool pressed, Color activeColor)
+        {
+            if (keycap == null) return;
+            keycap.color = pressed ? activeColor : new Color(0.75f, 0.90f, 0.98f, 0.88f);
+            keycap.rectTransform.localScale = pressed ? new Vector3(1.08f, 1.08f, 1f) : Vector3.one;
         }
 
         private GameObject BuildPauseOverlay(Transform parent)
