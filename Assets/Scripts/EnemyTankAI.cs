@@ -144,19 +144,7 @@ namespace DemoRicochet
                 _shadowTransform.localPosition = new Vector3(0.12f, 0.008f, 0.08f);
             }
 
-            Shader groundShader = NeonVisuals.GroundShader;
-            if (groundShader != null)
-            {
-                Color magentaTint = new Color(1.0f, 0.025f, 0.56f);
-
-                Material glowMat = new Material(groundShader) { name = "EnemyUnderglow", renderQueue = 3005 };
-                glowMat.SetFloat("_Mode", 0f);
-                glowMat.SetVector("_Color", magentaTint.linear * 1.8f);
-                GameObject glowQuad = NeonVisuals.CreateEffectQuad("Underglow", transform, glowMat);
-                glowQuad.transform.localPosition = new Vector3(0f, 0.028f, 0f);
-                glowQuad.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-                glowQuad.transform.localScale = new Vector3(2.8f, 2.8f, 1f);
-            }
+            TankUnderglow.Attach(_hullTransform, false, !isTurret);
         }
 
         private void SetupPhysics()
