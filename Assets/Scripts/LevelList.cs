@@ -10,5 +10,6 @@ namespace DemoRicochet
     public class LevelList : ScriptableObject
     {
         public LevelDefinition[] levels;
+        public LevelDefinition endlessArena;
     }
 }

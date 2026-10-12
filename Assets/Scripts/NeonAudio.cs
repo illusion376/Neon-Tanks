@@ -24,7 +24,7 @@ namespace DemoRicochet
         private const string SfxVolumeKey = "NeonTanks.SfxVolume";
 
         [Header("Громкость")]
-        [Range(0f, 1f)] public float masterVolume = 1f;
+        [Range(0f, 1f)] public float masterVolume = 0.5f;
         [Tooltip("Громкость всех эффектов, включая гул двигателей (музыка — отдельно)")]
         [Range(0f, 1f)] public float sfxVolume = 0.78f;
         [Tooltip("Громкость фоновой музыки (0.22 ≈ на 5 дБ тише прежних 0.4)")]
@@ -59,6 +59,14 @@ namespace DemoRicochet
                 _instance._pool[i].volume = _instance._poolVolumes[i] * SfxVolume;
             }
             PlayerPrefs.SetFloat(SfxVolumeKey, _instance.sfxVolume);
+        }
+
+        public static void StopEffects()
+        {
+            if (_instance == null) return;
+            for (int i = 0; i < _instance._pool.Length; i++)
+                _instance._pool[i].Stop();
+            _instance._lastPlayTime.Clear();
         }
 
         // Сколько копий одного звука может звучать одновременно (иначе с тройным выстрелом будет каша)

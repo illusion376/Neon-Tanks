@@ -18,3 +18,4 @@ MonoBehaviour:
   - {fileID: 3764680225172440434, guid: 377735f75b5ae654ab3acb710c1deeed, type: 3}
   - {fileID: 1437784676069666958, guid: d91ca912a4d55984dbdfe5f297ba9569, type: 3}
   - {fileID: 2026120984714813786, guid: 6fb5da77be9a4fe4cb43cb47c262949f, type: 3}
+  endlessArena: {fileID: 3764680225172440434, guid: 9032fc19e9ef4e368da7089f57bf1bf7, type: 3}

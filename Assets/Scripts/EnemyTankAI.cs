@@ -58,7 +58,7 @@ namespace DemoRicochet
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoSpawnEnemies()
         {
-            if (!LevelManager.IsActive && FindAnyObjectByType<EnemyTankAI>() == null)
+            if (!LevelManager.IsMainMenu && !LevelManager.IsActive && FindAnyObjectByType<EnemyTankAI>() == null)
             {
                 SpawnEnemy("EnemyTank_1", new Vector3(8.4f, 0f, 3.4f));
                 SpawnEnemy("EnemyTank_2", new Vector3(8.4f, 0f, -3.4f));

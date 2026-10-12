@@ -49,7 +49,7 @@ namespace DemoRicochet
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoSpawnTank()
         {
-            if (!LevelManager.IsActive && FindAnyObjectByType<SimpleBoxTank>() == null)
+            if (!LevelManager.IsMainMenu && !LevelManager.IsActive && FindAnyObjectByType<SimpleBoxTank>() == null)
             {
                 GameObject tankObj = new GameObject("PlayerTank");
                 tankObj.transform.position = new Vector3(-8.4f, 0f, -3.5f);

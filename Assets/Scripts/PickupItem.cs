@@ -39,7 +39,7 @@ namespace DemoRicochet
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoSpawnArenaPickups()
         {
-            if (LevelManager.IsActive || FindAnyObjectByType<PickupItem>() != null) return;
+            if (LevelManager.IsMainMenu || LevelManager.IsActive || FindAnyObjectByType<PickupItem>() != null) return;
 
             SpawnPickup("Pickup_Repair", PickupType.Repair, new Vector3(-4.2f, 0f, 2.1f));
             SpawnPickup("Pickup_Shield", PickupType.Shield, new Vector3(4.2f, 0f, -2.1f));

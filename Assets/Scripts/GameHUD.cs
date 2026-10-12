@@ -56,7 +56,7 @@ namespace DemoRicochet
         private Text _victoryTime;
         private Text _victoryButtonText;
 
-        // Режим кампании (LevelManager): победа — все враги уничтожены, поражение — кончились жизни
+        // Кампания и бесконечный бой: поражение — кончились жизни
         private bool _levelWon;
         private int _enemiesLeft;
         private GameObject _levelIntro;
@@ -70,7 +70,7 @@ namespace DemoRicochet
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoSpawnHUD()
         {
-            if (!LevelManager.IsActive && FindAnyObjectByType<GameHUD>() == null)
+            if (!LevelManager.IsMainMenu && !LevelManager.IsActive && FindAnyObjectByType<GameHUD>() == null)
             {
                 GameObject go = new GameObject("GameHUD");
                 go.AddComponent<GameHUD>();
@@ -81,6 +81,8 @@ namespace DemoRicochet
         {
             _remainingTime = LevelManager.IsActive ? 0f : matchDuration;
             _enemiesLeft = LevelManager.IsActive ? LevelManager.CountAliveEnemies() : 0;
+            _playerTank = FindAnyObjectByType<SimpleBoxTank>();
+            if (_playerTank != null) _playerHealth = _playerTank.Health;
             _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             if (_font == null)
             {
@@ -120,13 +122,14 @@ namespace DemoRicochet
 
             if (LevelManager.IsActive)
             {
+                if (LevelManager.IsEndless && !killedTankWasCyan) _cyanScore++;
                 _enemiesLeft = LevelManager.CountAliveEnemies();
                 RefreshScoreDisplay();
                 if (_playerHealth != null && _playerHealth.IsOutOfLives)
                 {
                     FinishLevel(false);
                 }
-                else if (_enemiesLeft == 0)
+                else if (!LevelManager.IsEndless && _enemiesLeft == 0)
                 {
                     FinishLevel(true);
                 }
@@ -169,7 +172,7 @@ namespace DemoRicochet
 
             if (LevelManager.IsActive)
             {
-                // В кампании таймер считает время прохождения уровня
+                // В кампании и бесконечном бою таймер считает время выживания
                 if (!_isMatchFinished && !_isPaused)
                 {
                     _remainingTime += Time.deltaTime;
@@ -367,7 +370,7 @@ namespace DemoRicochet
                 int lives = _playerHealth == null ? 0
                     : (_playerHealth.respawnsLeft < 0 ? 99 : _playerHealth.respawnsLeft + (_playerHealth.IsDead ? 0 : 1));
                 if (_cyanScoreText != null) _cyanScoreText.text = lives.ToString("00");
-                if (_magentaScoreText != null) _magentaScoreText.text = _enemiesLeft.ToString("00");
+                if (_magentaScoreText != null) _magentaScoreText.text = (LevelManager.IsEndless ? _cyanScore : _enemiesLeft).ToString("00");
                 return;
             }
 
@@ -405,7 +408,11 @@ namespace DemoRicochet
                 return;
             }
 
-            ShowDefeat($"Осталось врагов: {_enemiesLeft}", "ЗАНОВО");
+            int seconds = Mathf.FloorToInt(_remainingTime);
+            string subtitle = LevelManager.IsEndless
+                ? $"Уничтожено: {_cyanScore}   •   Время: {seconds / 60:00}:{seconds % 60:00}"
+                : $"Осталось врагов: {_enemiesLeft}";
+            ShowDefeat(subtitle, "ЗАНОВО");
         }
 
         private void ShowDefeat(string subtitle, string buttonLabel)
@@ -511,14 +518,26 @@ namespace DemoRicochet
             RectTransform scorePanel = scoreFrame.rectTransform;
             _cyanScoreText = CreateLabel("00", scorePanel, 43, Cyan, new Vector2(84f, 54f), new Vector2(0.5f, 0.5f), new Vector2(-117f, -1f), FontStyle.Bold);
             _magentaScoreText = CreateLabel("00", scorePanel, 43, Magenta, new Vector2(84f, 54f), new Vector2(0.5f, 0.5f), new Vector2(117f, -1f), FontStyle.Bold);
+            if (LevelManager.IsEndless)
+            {
+                _cyanScoreText.rectTransform.anchoredPosition += Vector2.up * 6f;
+                _magentaScoreText.rectTransform.anchoredPosition += Vector2.up * 6f;
+                _magentaScoreText.resizeTextForBestFit = true;
+                _magentaScoreText.resizeTextMinSize = 16;
+                _magentaScoreText.resizeTextMaxSize = 43;
+                _magentaScoreText.horizontalOverflow = HorizontalWrapMode.Wrap;
+                _magentaScoreText.verticalOverflow = VerticalWrapMode.Truncate;
+                CreateLabel("ЖИЗНИ", scorePanel, 10, Cyan, new Vector2(84f, 16f), new Vector2(0.5f, 0.5f), new Vector2(-117f, -25f));
+                CreateLabel("УБИЙСТВА", scorePanel, 10, Magenta, new Vector2(84f, 16f), new Vector2(0.5f, 0.5f), new Vector2(117f, -25f));
+            }
             CreateLabel("TIME", scorePanel, 13, Muted, new Vector2(96f, 20f), new Vector2(0.5f, 0.5f), new Vector2(0f, 17f), FontStyle.Bold);
             _timerText = CreateLabel("00:00", scorePanel, 28, White, new Vector2(106f, 38f), new Vector2(0.5f, 0.5f), new Vector2(0f, -8f), FontStyle.Bold);
             RefreshScoreDisplay();
             RefreshTimerDisplay();
 
-            bool campaign = LevelManager.IsActive;
+            bool campaign = LevelManager.IsActive && !LevelManager.IsEndless;
             // Название уровня и подсказка (скрываются через несколько секунд)
-            if (campaign)
+            if (LevelManager.IsActive)
             {
                 _levelIntro = BuildLevelIntro(root);
             }
@@ -712,7 +731,7 @@ namespace DemoRicochet
 
             Image badge = CreateImage("LevelNumber", panel.transform, new Vector2(74f, 74f), new Vector2(0f, 0.5f), new Vector2(86f, 0f), Color.white);
             badge.sprite = Resources.Load<Sprite>("NeonTanks/UI/LevelNumberBadge");
-            CreateLabel((LevelManager.CurrentIndex + 1).ToString(), badge.transform, 32, Color.white, new Vector2(50f, 50f), new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
+            CreateLabel(LevelManager.IsEndless ? "∞" : (LevelManager.CurrentIndex + 1).ToString(), badge.transform, 32, Color.white, new Vector2(50f, 50f), new Vector2(0.5f, 0.5f), Vector2.zero, FontStyle.Bold);
 
             // В префабах заголовок уже содержит «УРОВЕНЬ N / НАЗВАНИЕ».
             string title = LevelManager.Current.title;
@@ -749,20 +768,21 @@ namespace DemoRicochet
             RectTransform safeArea = CreateRect("SafeArea", backdrop.transform, Vector2.zero, Vector2.zero, Vector2.zero);
             safeArea.gameObject.AddComponent<UISafeArea>();
 
-            Image panel = CreateImage("PauseCard", safeArea, new Vector2(460f, 376f), new Vector2(0.5f, 0.5f), Vector2.zero, Color.white);
+            Image panel = CreateImage("PauseCard", safeArea, new Vector2(460f, 464f), new Vector2(0.5f, 0.5f), Vector2.zero, Color.white);
             panel.sprite = Resources.Load<Sprite>("NeonTanks/UI/PausePanel");
             panel.type = Image.Type.Sliced;
 
-            CreateLabel("ПАУЗА", panel.transform, 42, Color.white, new Vector2(200f, 60f), new Vector2(0.5f, 0.5f), new Vector2(0f, 122f), FontStyle.Bold);
+            CreateLabel("ПАУЗА", panel.transform, 42, Color.white, new Vector2(200f, 60f), new Vector2(0.5f, 0.5f), new Vector2(0f, 166f), FontStyle.Bold);
             for (int i = 0; i < 2; i++)
             {
-                Image accent = CreateImage("TitleAccent_" + i, panel.transform, new Vector2(90f, 4f), new Vector2(0.5f, 0.5f), new Vector2(i == 0 ? -152f : 152f, 122f), i == 0 ? Cyan : Magenta);
+                Image accent = CreateImage("TitleAccent_" + i, panel.transform, new Vector2(90f, 4f), new Vector2(0.5f, 0.5f), new Vector2(i == 0 ? -152f : 152f, 166f), i == 0 ? Cyan : Magenta);
                 accent.sprite = Resources.Load<Sprite>("NeonTanks/UI/PauseTitleAccent");
                 if (i == 1) accent.rectTransform.localScale = new Vector3(-1f, 1f, 1f);
             }
 
-            CreatePauseMenuButton(panel.transform, "ContinueButton", "ПРОДОЛЖИТЬ", "PauseContinue", "PausePlayIcon", 46f, () => SetPaused(false));
-            CreatePauseMenuButton(panel.transform, "RestartButton", "НАЧАТЬ ЗАНОВО", "PauseRestart", "PauseRestartIcon", -31f, RestartMatch);
+            CreatePauseMenuButton(panel.transform, "ContinueButton", "ПРОДОЛЖИТЬ", "PauseContinue", "PausePlayIcon", 90f, () => SetPaused(false));
+            CreatePauseMenuButton(panel.transform, "RestartButton", "НАЧАТЬ ЗАНОВО", "PauseRestart", "PauseRestartIcon", 13f, RestartMatch);
+            CreatePauseMenuButton(panel.transform, "MainMenuButton", "ГЛАВНОЕ МЕНЮ", "PauseRestart", "PauseHomeIcon", -64f, LevelManager.ReturnToMainMenu);
             BuildVolumeSlider(panel.transform);
             return backdrop.gameObject;
         }
@@ -770,13 +790,13 @@ namespace DemoRicochet
         private void BuildVolumeSlider(Transform parent)
         {
             CreateLabel("ЗВУКИ", parent, 15, Muted, new Vector2(260f, 26f),
-                new Vector2(0.5f, 0.5f), new Vector2(-54f, -100f), FontStyle.Bold).alignment = TextAnchor.MiddleLeft;
+                new Vector2(0.5f, 0.5f), new Vector2(-54f, -140f), FontStyle.Bold).alignment = TextAnchor.MiddleLeft;
             _sfxVolumeText = CreateLabel("", parent, 15, Cyan, new Vector2(80f, 26f),
-                new Vector2(0.5f, 0.5f), new Vector2(144f, -100f), FontStyle.Bold);
+                new Vector2(0.5f, 0.5f), new Vector2(144f, -140f), FontStyle.Bold);
             _sfxVolumeText.alignment = TextAnchor.MiddleRight;
 
             Image hitArea = CreateImage("SfxVolumeSlider", parent, new Vector2(368f, 42f),
-                new Vector2(0.5f, 0.5f), new Vector2(0f, -136f), Color.clear);
+                new Vector2(0.5f, 0.5f), new Vector2(0f, -176f), Color.clear);
             hitArea.raycastTarget = true;
             _sfxVolumeSlider = hitArea.gameObject.AddComponent<Slider>();
             _sfxVolumeSlider.minValue = 0f;
@@ -873,7 +893,7 @@ namespace DemoRicochet
             return backdrop.gameObject;
         }
 
-        private static void EnsureEventSystem()
+        internal static void EnsureEventSystem()
         {
             if (EventSystem.current != null) return;
             GameObject es = new GameObject("EventSystem", typeof(EventSystem));

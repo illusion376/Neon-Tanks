@@ -52,7 +52,7 @@ namespace DemoRicochet
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoCreateIfNeeded()
         {
-            if (!LevelManager.IsActive && FindAnyObjectByType<SimpleArenaBuilder>() == null)
+            if (!LevelManager.IsMainMenu && !LevelManager.IsActive && FindAnyObjectByType<SimpleArenaBuilder>() == null)
             {
                 GameObject go = new GameObject("SimpleArenaBuilder");
                 go.AddComponent<SimpleArenaBuilder>();
