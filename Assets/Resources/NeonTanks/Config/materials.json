@@ -1,0 +1,196 @@
+{
+  "materials": [
+    {
+      "name": "NTM_Armor",
+      "color": [
+        0.2196078431372549,
+        0.32941176470588235,
+        0.47843137254901963
+      ],
+      "metallic": 0.48,
+      "smoothness": 0.69,
+      "emission": 0,
+      "alpha": 1
+    },
+    {
+      "name": "NTM_Dark",
+      "color": [
+        0.03137254901960784,
+        0.043137254901960784,
+        0.11764705882352941
+      ],
+      "metallic": 0.3,
+      "smoothness": 0.5800000000000001,
+      "emission": 0,
+      "alpha": 1
+    },
+    {
+      "name": "NTM_Rubber",
+      "color": [
+        0.03137254901960784,
+        0.054901960784313725,
+        0.09411764705882353
+      ],
+      "metallic": 0.08,
+      "smoothness": 0.32999999999999996,
+      "emission": 0,
+      "alpha": 1
+    },
+    {
+      "name": "NTM_Steel",
+      "color": [
+        0.3215686274509804,
+        0.44313725490196076,
+        0.5803921568627451
+      ],
+      "metallic": 0.66,
+      "smoothness": 0.69,
+      "emission": 0,
+      "alpha": 1
+    },
+    {
+      "name": "NTM_Floor",
+      "color": [
+        0.06666666666666667,
+        0.07450980392156863,
+        0.1607843137254902
+      ],
+      "metallic": 0.25,
+      "smoothness": 0.48,
+      "emission": 0,
+      "alpha": 1
+    },
+    {
+      "name": "NTM_FloorAlt",
+      "color": [
+        0.09019607843137255,
+        0.10196078431372549,
+        0.21176470588235294
+      ],
+      "metallic": 0.22,
+      "smoothness": 0.45999999999999996,
+      "emission": 0,
+      "alpha": 1
+    },
+    {
+      "name": "NTM_Hazard",
+      "color": [
+        0.9411764705882353,
+        0.6627450980392157,
+        0.11372549019607843
+      ],
+      "metallic": 0.18,
+      "smoothness": 0.48,
+      "emission": 0,
+      "alpha": 1
+    },
+    {
+      "name": "NTM_Mirror",
+      "color": [
+        0.09411764705882353,
+        0.2980392156862745,
+        0.48627450980392156
+      ],
+      "metallic": 0.7,
+      "smoothness": 0.83,
+      "emission": 0,
+      "alpha": 1
+    },
+    {
+      "name": "NTM_Cyan",
+      "color": [
+        0.0,
+        0.8980392156862745,
+        1.0
+      ],
+      "metallic": 0.1,
+      "smoothness": 0.76,
+      "emission": 8,
+      "alpha": 1
+    },
+    {
+      "name": "NTM_Magenta",
+      "color": [
+        1.0,
+        0.09803921568627451,
+        0.7254901960784313
+      ],
+      "metallic": 0.1,
+      "smoothness": 0.76,
+      "emission": 8,
+      "alpha": 1
+    },
+    {
+      "name": "NTM_Violet",
+      "color": [
+        0.5686274509803921,
+        0.22745098039215686,
+        1.0
+      ],
+      "metallic": 0.1,
+      "smoothness": 0.72,
+      "emission": 7,
+      "alpha": 1
+    },
+    {
+      "name": "NTM_Circuit",
+      "color": [
+        0.2235294117647059,
+        0.21176470588235294,
+        0.7411764705882353
+      ],
+      "metallic": 0.15,
+      "smoothness": 0.6,
+      "emission": 0.8,
+      "alpha": 1
+    },
+    {
+      "name": "NTM_Mint",
+      "color": [
+        0.12941176470588237,
+        0.9921568627450981,
+        0.7529411764705882
+      ],
+      "metallic": 0.1,
+      "smoothness": 0.7,
+      "emission": 5,
+      "alpha": 1
+    },
+    {
+      "name": "NTM_Yellow",
+      "color": [
+        1.0,
+        0.7372549019607844,
+        0.1411764705882353
+      ],
+      "metallic": 0.15,
+      "smoothness": 0.7,
+      "emission": 5,
+      "alpha": 1
+    },
+    {
+      "name": "NTM_GlassCyan",
+      "color": [
+        0.023529411764705882,
+        0.7411764705882353,
+        0.9803921568627451
+      ],
+      "metallic": 0.05,
+      "smoothness": 0.75,
+      "emission": 0.7,
+      "alpha": 0.16
+    },
+    {
+      "name": "NTM_GlassMagenta",
+      "color": [
+        0.9372549019607843,
+        0.09411764705882353,
+        0.6
+      ],
+      "metallic": 0.05,
+      "smoothness": 0.75,
+      "emission": 0.7,
+      "alpha": 0.16
+    }
+  ]
+}
