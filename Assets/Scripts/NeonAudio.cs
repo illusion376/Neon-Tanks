@@ -32,6 +32,8 @@ namespace DemoRicochet
         [Range(0f, 1f)] public float musicVolume = 0.22f;
         [Tooltip("Во сколько раз приглушать музыку на паузе и экране результата")]
         [Range(0f, 1f)] public float musicDuckOnPause = 0.4f;
+        [Tooltip("Во сколько раз музыка тише в главном меню (заставке), чем в игре")]
+        [Range(0f, 1f)] public float menuMusicMultiplier = 0.7f;
         [Tooltip("Насколько сильно звук смещается влево/вправо по положению на экране")]
         [Range(0f, 1f)] public float stereoWidth = 0.55f;
 
@@ -70,7 +72,7 @@ namespace DemoRicochet
             _instance.musicVolume = Mathf.Clamp01(volume);
             if (_instance._music != null)
             {
-                float target = _instance.masterVolume * _instance.musicVolume * (Time.timeScale < 0.01f ? _instance.musicDuckOnPause : 1f);
+                float target = _instance.MusicTargetVolume();
                 if (_instance.musicVolume <= 0.001f)
                 {
                     _instance._music.volume = 0f;
@@ -180,12 +182,23 @@ namespace DemoRicochet
             if (paused) PlayerPrefs.Save();
         }
 
+        /// <summary>
+        /// Целевая громкость музыки: общая × музыка × (приглушение на паузе) × (тише в главном меню).
+        /// </summary>
+        private float MusicTargetVolume()
+        {
+            float v = masterVolume * musicVolume;
+            if (Time.timeScale < 0.01f) v *= musicDuckOnPause;
+            if (LevelManager.IsMainMenu) v *= menuMusicMultiplier;
+            return v;
+        }
+
         private void Update()
         {
             // Музыка: плавно приглушаем на паузе и на экране результата (там Time.timeScale = 0)
             if (_music != null && _music.clip != null)
             {
-                float target = masterVolume * musicVolume * (Time.timeScale < 0.01f ? musicDuckOnPause : 1f);
+                float target = MusicTargetVolume();
                 _music.volume = Mathf.MoveTowards(_music.volume, target, Time.unscaledDeltaTime * 0.8f);
             }
 
