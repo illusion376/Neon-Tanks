@@ -1665,59 +1665,7 @@
       "color": 4
     }
   ],
-  "washes": [
-    {
-      "position": [
-        -9,
-        0.015,
-        -3.9
-      ],
-      "size": [
-        11,
-        10
-      ],
-      "color": [
-        1,
-        0.002,
-        0.2
-      ],
-      "strength": 0.95
-    },
-    {
-      "position": [
-        10,
-        0.016,
-        4.3
-      ],
-      "size": [
-        12,
-        11
-      ],
-      "color": [
-        1,
-        0.002,
-        0.28
-      ],
-      "strength": 1.25
-    },
-    {
-      "position": [
-        0,
-        -1.61,
-        7
-      ],
-      "size": [
-        37,
-        9
-      ],
-      "color": [
-        0.4,
-        0.004,
-        0.85
-      ],
-      "strength": 0.18
-    }
-  ],
+  "washes": [],
   "particleCount": 160,
   "particleRate": 11,
   "particleColor": [
