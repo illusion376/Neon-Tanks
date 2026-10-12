@@ -20,6 +20,19 @@ namespace DemoRicochet
             public float phase;
         }
 
+        [Header("Настройки тумана")]
+        [Tooltip("Общая плотность (прозрачность) тумана. Крути ползунок в Play Mode на объекте MainMenu.")]
+        [Range(0f, 2f)]
+        public float fogOpacity = 1.0f;
+
+        [Tooltip("Скорость движения тумана.")]
+        [Range(0f, 3f)]
+        public float fogSpeed = 0.8f;
+
+        [Tooltip("Размах смещения клубов тумана.")]
+        [Range(0f, 2.5f)]
+        public float fogDriftRange = 1.0f;
+
         private const string ArtPath = "NeonTanks/UI/";
         private Font _font;
         private Button _playButton;
@@ -29,6 +42,7 @@ namespace DemoRicochet
         private RawImage _ribbonA;
         private RawImage _ribbonB;
         private FogPuff[] _fogPuffs;
+        private float _fogTime;
 
         private void Awake()
         {
@@ -92,7 +106,8 @@ namespace DemoRicochet
             float scale = Mathf.Min(1f, Mathf.Min(available.x / size.x, available.y / size.y));
             _layout.localScale = Vector3.one * Mathf.Max(0.1f, scale);
 
-            UpdateAnimatedFog(Time.unscaledTime);
+            _fogTime += Time.unscaledDeltaTime * fogSpeed;
+            UpdateAnimatedFog(_fogTime);
         }
 
         private void BuildAnimatedFog(Transform parent)
@@ -104,34 +119,34 @@ namespace DemoRicochet
             fogRoot.anchorMin = Vector2.zero;
             fogRoot.anchorMax = Vector2.one;
 
-            _ribbonA = CreateFogRibbon("HorizonMist_A", fogRoot, new Vector2(1500f, 210f), new Vector2(0f, 44f),
-                new Color(0.18f, 0.52f, 1.0f, 0.20f), new Rect(0f, 0f, 1.6f, 1f));
-            _ribbonB = CreateFogRibbon("HorizonMist_B", fogRoot, new Vector2(1500f, 190f), new Vector2(0f, 28f),
-                new Color(0.85f, 0.16f, 0.75f, 0.18f), new Rect(0.35f, 0f, 1.3f, 1f));
+            _ribbonA = CreateFogRibbon("HorizonMist_A", fogRoot, new Vector2(1600f, 210f), new Vector2(0f, 44f),
+                new Color(0.12f, 0.65f, 1.0f, 0.36f), new Rect(0f, 0f, 1.8f, 1f));
+            _ribbonB = CreateFogRibbon("HorizonMist_B", fogRoot, new Vector2(1600f, 195f), new Vector2(0f, 24f),
+                new Color(0.95f, 0.18f, 0.78f, 0.34f), new Rect(0.35f, 0f, 1.5f, 1f));
 
             _fogPuffs = new[]
             {
                 // Левая (голубая/синяя) зона дымки у зданий и танка
-                CreateFogPuff("Fog_Cyan_1", fogRoot, new Vector2(-460f, 48f), new Vector2(540f, 210f),
-                    new Color(0.04f, 0.62f, 1.0f, 0.28f), 68f, 14f, 0.42f, 0.0f),
-                CreateFogPuff("Fog_Cyan_2", fogRoot, new Vector2(-320f, 18f), new Vector2(480f, 180f),
-                    new Color(0.10f, 0.50f, 1.0f, 0.22f), -56f, 12f, 0.34f, 1.7f),
-                CreateFogPuff("Fog_Cyan_Low", fogRoot, new Vector2(-410f, -42f), new Vector2(460f, 150f),
-                    new Color(0.05f, 0.72f, 1.0f, 0.18f), 48f, 9f, 0.50f, 3.1f),
+                CreateFogPuff("Fog_Cyan_1", fogRoot, new Vector2(-460f, 48f), new Vector2(560f, 220f),
+                    new Color(0.05f, 0.70f, 1.0f, 0.48f), 145f, 28f, 1.15f, 0.0f),
+                CreateFogPuff("Fog_Cyan_2", fogRoot, new Vector2(-330f, 16f), new Vector2(500f, 190f),
+                    new Color(0.12f, 0.56f, 1.0f, 0.42f), -130f, 24f, 0.98f, 1.7f),
+                CreateFogPuff("Fog_Cyan_Low", fogRoot, new Vector2(-410f, -46f), new Vector2(480f, 165f),
+                    new Color(0.06f, 0.76f, 1.0f, 0.38f), 115f, 20f, 1.35f, 3.1f),
 
-                // Центральная фиолетовая дымка на горизонте под неоновой дугой
-                CreateFogPuff("Fog_Center_1", fogRoot, new Vector2(-95f, 62f), new Vector2(520f, 195f),
-                    new Color(0.45f, 0.20f, 0.88f, 0.22f), 54f, 12f, 0.31f, 0.8f),
-                CreateFogPuff("Fog_Center_2", fogRoot, new Vector2(105f, 56f), new Vector2(520f, 195f),
-                    new Color(0.68f, 0.16f, 0.82f, 0.22f), -54f, 12f, 0.36f, 2.4f),
+                // Центральная дымка на горизонте
+                CreateFogPuff("Fog_Center_1", fogRoot, new Vector2(-110f, 58f), new Vector2(520f, 200f),
+                    new Color(0.42f, 0.24f, 0.92f, 0.38f), 135f, 24f, 1.05f, 0.8f),
+                CreateFogPuff("Fog_Center_2", fogRoot, new Vector2(110f, 54f), new Vector2(520f, 200f),
+                    new Color(0.72f, 0.18f, 0.86f, 0.38f), -135f, 24f, 1.12f, 2.4f),
 
                 // Правая (пурпурно-розовая) зона дымки у зданий и танка
-                CreateFogPuff("Fog_Magenta_1", fogRoot, new Vector2(460f, 46f), new Vector2(540f, 210f),
-                    new Color(1.0f, 0.12f, 0.58f, 0.28f), -68f, 14f, 0.40f, 0.9f),
-                CreateFogPuff("Fog_Magenta_2", fogRoot, new Vector2(320f, 16f), new Vector2(480f, 180f),
-                    new Color(0.95f, 0.18f, 0.68f, 0.22f), 56f, 12f, 0.33f, 2.6f),
-                CreateFogPuff("Fog_Magenta_Low", fogRoot, new Vector2(410f, -42f), new Vector2(460f, 150f),
-                    new Color(1.0f, 0.16f, 0.52f, 0.18f), -48f, 9f, 0.48f, 4.2f)
+                CreateFogPuff("Fog_Magenta_1", fogRoot, new Vector2(460f, 46f), new Vector2(560f, 220f),
+                    new Color(1.0f, 0.14f, 0.62f, 0.48f), -145f, 28f, 1.10f, 0.9f),
+                CreateFogPuff("Fog_Magenta_2", fogRoot, new Vector2(330f, 14f), new Vector2(500f, 190f),
+                    new Color(0.95f, 0.20f, 0.72f, 0.42f), 130f, 24f, 0.95f, 2.6f),
+                CreateFogPuff("Fog_Magenta_Low", fogRoot, new Vector2(410f, -46f), new Vector2(480f, 165f),
+                    new Color(1.0f, 0.18f, 0.54f, 0.38f), -115f, 20f, 1.32f, 4.2f)
             };
         }
 
@@ -173,20 +188,22 @@ namespace DemoRicochet
             if (_ribbonA != null)
             {
                 Rect uv = _ribbonA.uvRect;
-                uv.x = Mathf.Repeat(t * 0.022f, 1f);
+                uv.x = Mathf.Repeat(t * 0.095f, 1f);
                 _ribbonA.uvRect = uv;
+                _ribbonA.rectTransform.anchoredPosition = new Vector2(0f, 44f + Mathf.Sin(t * 1.1f) * 14f * fogDriftRange);
                 Color c = _ribbonA.color;
-                c.a = 0.18f + 0.05f * Mathf.Sin(t * 0.55f);
+                c.a = Mathf.Clamp01((0.36f + 0.10f * Mathf.Sin(t * 1.25f)) * fogOpacity);
                 _ribbonA.color = c;
             }
 
             if (_ribbonB != null)
             {
                 Rect uv = _ribbonB.uvRect;
-                uv.x = Mathf.Repeat(0.35f - t * 0.016f, 1f);
+                uv.x = Mathf.Repeat(0.35f - t * 0.078f, 1f);
                 _ribbonB.uvRect = uv;
+                _ribbonB.rectTransform.anchoredPosition = new Vector2(0f, 24f + Mathf.Cos(t * 0.95f + 0.8f) * 12f * fogDriftRange);
                 Color c = _ribbonB.color;
-                c.a = 0.16f + 0.05f * Mathf.Cos(t * 0.48f + 1.1f);
+                c.a = Mathf.Clamp01((0.34f + 0.10f * Mathf.Cos(t * 1.10f + 1.1f)) * fogOpacity);
                 _ribbonB.color = c;
             }
 
@@ -195,16 +212,17 @@ namespace DemoRicochet
             {
                 FogPuff p = _fogPuffs[i];
                 float a = t * p.speed + p.phase;
-                float dx = Mathf.Sin(a) * p.driftAmpX + Mathf.Cos(a * 0.63f) * (p.driftAmpX * 0.35f);
-                float dy = Mathf.Cos(a * 0.78f) * p.driftAmpY;
+                float dx = (Mathf.Sin(a) * p.driftAmpX + Mathf.Cos(a * 0.67f) * (p.driftAmpX * 0.40f)) * fogDriftRange;
+                float dy = (Mathf.Cos(a * 0.82f) * p.driftAmpY + Mathf.Sin(a * 1.35f) * (p.driftAmpY * 0.30f)) * fogDriftRange;
                 p.rect.anchoredPosition = p.basePos + new Vector2(dx, dy);
 
-                float scaleX = 1f + 0.10f * Mathf.Sin(a * 0.7f + 0.5f);
-                float scaleY = 1f + 0.08f * Mathf.Cos(a * 0.55f);
+                float scaleX = 1f + 0.18f * Mathf.Sin(a * 0.90f + 0.5f);
+                float scaleY = 1f + 0.15f * Mathf.Cos(a * 0.75f);
                 p.rect.sizeDelta = new Vector2(p.baseSize.x * scaleX, p.baseSize.y * scaleY);
+                p.rect.localEulerAngles = new Vector3(0f, 0f, Mathf.Sin(a * 0.65f + p.phase) * 6f);
 
                 Color col = p.baseColor;
-                col.a = p.baseColor.a * (0.78f + 0.28f * Mathf.Sin(a * 0.85f + 1.3f));
+                col.a = Mathf.Clamp01(p.baseColor.a * (0.78f + 0.32f * Mathf.Sin(a * 1.10f + 1.3f)) * fogOpacity);
                 p.image.color = col;
             }
         }
@@ -226,9 +244,17 @@ namespace DemoRicochet
                 for (int x = 0; x < width; x++)
                 {
                     float u = (float)x / width;
-                    float n1 = TileableNoise(u, v, 3.2f, 2.0f, 11.3f, 7.1f);
-                    float n2 = TileableNoise(u, v, 6.4f, 4.0f, 23.7f, 19.4f);
-                    float val = Mathf.Clamp01((n1 * 0.65f + n2 * 0.35f - 0.32f) * 1.65f) * vMask;
+                    float warp = TileableNoise(u, v, 2.0f, 2.0f, 5.1f, 3.7f) - 0.5f;
+                    float uw = Mathf.Repeat(u + warp * 0.16f, 1f);
+                    float vw = Mathf.Clamp01(v + warp * 0.14f);
+
+                    float n1 = TileableNoise(uw, vw, 3.0f, 2.2f, 11.3f, 7.1f);
+                    float n2 = TileableNoise(uw, vw, 6.0f, 4.4f, 23.7f, 19.4f);
+                    float n3 = TileableNoise(uw, vw, 12.0f, 8.0f, 37.2f, 29.8f);
+                    float fbm = n1 * 0.55f + n2 * 0.30f + n3 * 0.15f;
+
+                    float clouds = Mathf.Clamp01((fbm - 0.30f) * 2.1f);
+                    float val = Mathf.SmoothStep(0f, 1f, clouds) * vMask;
                     byte a = (byte)Mathf.RoundToInt(val * 255f);
                     pixels[y * width + x] = new Color32(255, 255, 255, a);
                 }
@@ -261,13 +287,18 @@ namespace DemoRicochet
                         continue;
                     }
                     float falloff = 1f - distSq;
-                    falloff = falloff * falloff;
+                    falloff *= falloff;
 
-                    float n1 = Mathf.PerlinNoise(u * 3.0f + 5.2f, v * 2.4f + 8.7f);
-                    float n2 = Mathf.PerlinNoise(u * 6.2f + 17.1f, v * 4.8f + 3.4f);
-                    float n3 = Mathf.PerlinNoise(u * 12.0f + 31.0f, v * 9.2f + 14.2f);
+                    float wx = u + (Mathf.PerlinNoise(u * 2.5f + 1.9f, v * 2.5f + 4.3f) - 0.5f) * 0.22f;
+                    float wy = v + (Mathf.PerlinNoise(u * 2.5f + 8.1f, v * 2.5f + 2.7f) - 0.5f) * 0.22f;
+
+                    float n1 = Mathf.PerlinNoise(wx * 3.2f + 5.2f, wy * 2.6f + 8.7f);
+                    float n2 = Mathf.PerlinNoise(wx * 6.5f + 17.1f, wy * 5.0f + 3.4f);
+                    float n3 = Mathf.PerlinNoise(wx * 13.0f + 31.0f, wy * 10.0f + 14.2f);
                     float fbm = n1 * 0.55f + n2 * 0.30f + n3 * 0.15f;
-                    float val = Mathf.Clamp01((fbm - 0.25f) * 1.45f) * falloff;
+
+                    float wisps = Mathf.Clamp01((fbm - 0.28f) * 2.15f);
+                    float val = Mathf.SmoothStep(0f, 1f, wisps) * falloff;
                     byte a = (byte)Mathf.RoundToInt(val * 255f);
                     pixels[y * width + x] = new Color32(255, 255, 255, a);
                 }
