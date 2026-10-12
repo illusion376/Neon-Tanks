@@ -618,7 +618,7 @@ namespace DemoRicochet
         {
             Vector2 center = new Vector2(0.5f, 0.5f);
             Image panel = CreateImage("RespawnBanner", parent, new Vector2(560f, 84f), center,
-                new Vector2(0f, -84f), new Color(0.004f, 0.012f, 0.022f, 0.90f));
+                Vector2.zero, new Color(0.004f, 0.012f, 0.022f, 0.90f));
             CreateRespawnLine("RespawnAccent", panel.transform, new Vector2(540f, 2f), new Vector2(10f, 44f));
 
             Image badge = CreateImage("RespawnCountdown", panel.transform, new Vector2(90f, 90f), center,
@@ -638,7 +638,7 @@ namespace DemoRicochet
             AddRespawnGlow(_respawnText);
 
             CreateLabel("ВОЗВРАЩЕНИЕ В БОЙ", panel.transform, 26, White, new Vector2(410f, 54f),
-                center, new Vector2(55f, 0f), FontStyle.Bold);
+                center, Vector2.zero, FontStyle.Bold);
             return panel.gameObject;
         }
 
