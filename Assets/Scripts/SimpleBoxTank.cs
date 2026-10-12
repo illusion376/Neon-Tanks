@@ -358,9 +358,6 @@ namespace DemoRicochet
 #endif
             if (!firePressed || _cooldownTimer > 0f) return;
 
-            // Первый выстрел выключает стартовую безопасную зону
-            if (LevelDefinition.Active != null) LevelDefinition.Active.SetSafeZoneActive(false);
-
             bool rapid = _health != null && _health.HasRapidFire;
             _cooldownTimer = rapid ? fireCooldown * 0.65f : fireCooldown;
             _cooldownDuration = _cooldownTimer;

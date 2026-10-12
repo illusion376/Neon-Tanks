@@ -315,14 +315,9 @@ namespace DemoRicochet
             return blocked;
         }
 
-        // Безопасная зона игрока (LevelDefinition) плюс запас, чтобы бот не подъезжал вплотную
         private static bool IsNearSafeZone(Vector3 point)
         {
-            LevelDefinition level = LevelDefinition.Active;
-            if (level == null || !level.IsSafeZoneActive || level.safeZoneRadius <= 0f) return false;
-            Vector3 d = point - level.PlayerSpawnPosition;
-            d.y = 0f;
-            return d.magnitude < level.safeZoneRadius + 1.5f;
+            return false;
         }
 
         private void PickBestCorridorWaypoint()
@@ -434,12 +429,6 @@ namespace DemoRicochet
             float targetAimYaw = Mathf.Atan2(_desiredAimDir.x, _desiredAimDir.z) * Mathf.Rad2Deg;
             _aimYaw = Mathf.MoveTowardsAngle(_aimYaw, targetAimYaw, turretTurnSpeed * dt);
             _currentAimDir = Quaternion.Euler(0f, _aimYaw, 0f) * Vector3.forward;
-
-            // Игрок в стартовой безопасной зоне — не стреляем
-            if (_playerTank != null && LevelDefinition.IsInSafeZone(_playerTank.transform.position))
-            {
-                _hasValidShot = false;
-            }
 
             _fireTimer -= dt;
             if (_fireTimer <= 0f && _hasValidShot)

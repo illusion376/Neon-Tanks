@@ -36,27 +36,15 @@ namespace DemoRicochet
 
         public Vector3 PlayerSpawnPosition => playerSpawn != null ? playerSpawn.position : transform.position;
 
-        private bool _safeZoneActive = true;
-        private GameObject _safeZoneVisual;
+        public bool IsSafeZoneActive => false;
 
-        public bool IsSafeZoneActive => _safeZoneActive;
-
-        /// <summary>
-        /// Включает/выключает безопасную зону. Выключается первым выстрелом игрока, включается при его возрождении.
-        /// </summary>
         public void SetSafeZoneActive(bool active)
         {
-            if (_safeZoneActive == active) return;
-            _safeZoneActive = active;
-            if (_safeZoneVisual != null) _safeZoneVisual.SetActive(active);
         }
 
         public static bool IsInSafeZone(Vector3 position)
         {
-            if (Active == null || !Active._safeZoneActive || Active.safeZoneRadius <= 0f) return false;
-            Vector3 d = position - Active.PlayerSpawnPosition;
-            d.y = 0f;
-            return d.sqrMagnitude <= Active.safeZoneRadius * Active.safeZoneRadius;
+            return false;
         }
 
         private void Awake()
@@ -69,27 +57,14 @@ namespace DemoRicochet
             if (Active == this) Active = null;
         }
 
-        private void Start()
-        {
-            BuildSafeZoneVisual();
-        }
-
-        private void BuildSafeZoneVisual()
-        {
-            // Визуальные эффекты спавнзоны (свечение и пунктирный кружок) отключены.
-            // Сама игровая зона и логика защиты продолжают работать без визуала на полу.
-        }
-
-        // Подсказки в окне Scene: границы арены, старт, зона, враги и бонусы
+        // Подсказки в окне Scene: границы арены, старт, враги и бонусы
         private void OnDrawGizmos()
         {
             const float centerZ = 0.15f;
             Gizmos.color = Color.yellow;
             Gizmos.DrawWireCube(new Vector3(0f, 0f, centerZ), new Vector3(arenaWidth, 0.05f, arenaDepth));
 
-            Gizmos.color = new Color(0.18f, 1.0f, 0.80f);
             Vector3 spawn = PlayerSpawnPosition;
-            DrawCircle(spawn, safeZoneRadius);
             Gizmos.color = Color.cyan;
             Gizmos.DrawWireSphere(spawn + Vector3.up * 0.5f, 0.62f);
 

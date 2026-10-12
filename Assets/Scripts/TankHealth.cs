@@ -182,14 +182,7 @@ namespace DemoRicochet
                 return true;
             }
 
-            // Игрок в стартовой безопасной зоне уровня — урон не проходит
-            if (isCyanTeam && LevelDefinition.IsInSafeZone(transform.position))
-            {
-                _hitFlashTimer = 0.14f;
-                NeonAudio.ProtectDeflect(transform.position);
-                return true;
-            }
-
+            // Временный защитный купол при спавне (как бонус-щит, но на spawnProtectionTime)
             if (_protectionTimer > 0f)
             {
                 _hitFlashTimer = 0.14f;
@@ -280,9 +273,6 @@ namespace DemoRicochet
 
         private void Respawn()
         {
-            // Игрок возрождается на старте — безопасная зона снова включается
-            if (isCyanTeam && LevelDefinition.Active != null) LevelDefinition.Active.SetSafeZoneActive(true);
-
             _isDead = false;
             currentHealth = maxHealth;
             _protectionTimer = spawnProtectionTime;
