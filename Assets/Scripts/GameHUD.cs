@@ -273,6 +273,7 @@ namespace DemoRicochet
             if (paused != _isPaused) NeonAudio.Pause(paused);
             _isPaused = paused;
             Time.timeScale = _isPaused ? 0f : 1f;
+            NeonEngineSound.SetAllPaused(_isPaused);
             if (_gameplayHud != null) _gameplayHud.SetActive(!_isPaused);
             if (_mobileControls != null) _mobileControls.SetInputEnabled(!_isPaused && !_isMatchFinished);
             if (_pauseOverlay != null)
@@ -295,6 +296,7 @@ namespace DemoRicochet
             if (_respawnBanner != null) _respawnBanner.SetActive(false);
 
             Time.timeScale = 0f;
+            NeonEngineSound.SetAllPaused(true);
             if (_mobileControls != null) _mobileControls.SetInputEnabled(false);
 
             bool victory = _cyanScore > _magentaScore;
@@ -335,6 +337,7 @@ namespace DemoRicochet
             _isMatchFinished = false;
             _isPaused = false;
             Time.timeScale = 1f;
+            NeonEngineSound.SetAllPaused(false);
             if (_gameplayHud != null) _gameplayHud.SetActive(true);
 
             _cyanScore = 0;
@@ -398,6 +401,7 @@ namespace DemoRicochet
             if (_levelIntro != null) _levelIntro.SetActive(false);
 
             Time.timeScale = 0f;
+            NeonEngineSound.SetAllPaused(true);
             if (_mobileControls != null) _mobileControls.SetInputEnabled(false);
 
             bool campaignDone = victory && LevelManager.IsLastLevel;
