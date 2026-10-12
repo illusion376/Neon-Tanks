@@ -168,6 +168,9 @@ namespace DemoRicochet
                               RigidbodyConstraints.FreezeRotationX |
                               RigidbodyConstraints.FreezeRotationY |
                               RigidbodyConstraints.FreezeRotationZ;
+
+            // Турель не должна сдвигаться от тарана танков: кинематическое тело физика не толкает
+            if (moveSpeed <= 0f) _rb.isKinematic = true;
         }
 
         private void Update()
@@ -191,6 +194,8 @@ namespace DemoRicochet
 
         private void FixedUpdate()
         {
+            if (_rb.isKinematic) return; // турель стоит на месте
+
             if (_health != null && _health.IsDead)
             {
                 _rb.linearVelocity = Vector3.zero;

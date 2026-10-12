@@ -4,12 +4,11 @@ using UnityEngine;
 namespace DemoRicochet.EditorTools
 {
     /// <summary>
-    /// Автоматические настройки импорта для звуков из Assets/Resources/NeonTanks/Audio:
-    ///   музыка — Streaming + Vorbis (не держим 2 минуты стерео в памяти целиком);
-    ///   короткие эффекты — Decompress On Load (без задержки при проигрывании);
-    ///   длинные/зацикленные эффекты — Compressed In Memory.
-    /// Срабатывает при первом импорте. Чтобы применить к уже импортированным файлам:
-    /// выделить папку Audio → правый клик → Reimport.
+    /// Настройки импорта звуков из Assets/Resources/NeonTanks/Audio:
+    ///   музыка — Streaming + Vorbis (не держим весь трек в памяти);
+    ///   зацикленные эффекты (*_loop) — Compressed In Memory;
+    ///   короткие эффекты — Decompress On Load (без задержки при проигрывании).
+    /// Срабатывает при импорте. Для уже импортированных файлов: папка Audio → правый клик → Reimport.
     /// </summary>
     public class NeonAudioImporter : AssetPostprocessor
     {
@@ -24,16 +23,12 @@ namespace DemoRicochet.EditorTools
 
             if (assetPath.Contains("/Music/"))
             {
-                settings.loadType = AudioClipLoadType.Streaming;
-                settings.compressionFormat = AudioCompressionFormat.Vorbis;
-                settings.quality = 0.7f;
+                SetVorbis(ref settings, AudioClipLoadType.Streaming, 0.7f);
                 importer.loadInBackground = true;
             }
             else if (assetPath.Contains("_loop"))
             {
-                settings.loadType = AudioClipLoadType.CompressedInMemory;
-                settings.compressionFormat = AudioCompressionFormat.Vorbis;
-                settings.quality = 0.8f;
+                SetVorbis(ref settings, AudioClipLoadType.CompressedInMemory, 0.8f);
             }
             else
             {
@@ -42,6 +37,13 @@ namespace DemoRicochet.EditorTools
             }
 
             importer.defaultSampleSettings = settings;
+        }
+
+        private static void SetVorbis(ref AudioImporterSampleSettings settings, AudioClipLoadType loadType, float quality)
+        {
+            settings.loadType = loadType;
+            settings.compressionFormat = AudioCompressionFormat.Vorbis;
+            settings.quality = quality;
         }
     }
 }

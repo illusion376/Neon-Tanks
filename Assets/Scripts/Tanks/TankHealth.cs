@@ -256,7 +256,7 @@ namespace DemoRicochet
             TankExplosionEffect.Play(transform, GetTeamColor());
 
             if (_tankCollider != null) _tankCollider.enabled = false;
-            if (_tankRb != null) _tankRb.linearVelocity = Vector3.zero;
+            if (_tankRb != null && !_tankRb.isKinematic) _tankRb.linearVelocity = Vector3.zero;
 
             SetVisualsVisible(false);
             NeonAudio.TankExplode(_isPlayer, LevelManager.IsActive && respawnsLeft != 0, transform.position);

@@ -6,20 +6,36 @@ using UnityEngine.Rendering.Universal;
 
 namespace DemoRicochet
 {
-
+    /// <summary>
+    /// Строит всё, что не входит в префаб уровня: пол, неоновую рамку, невидимые стены по краям,
+    /// декор вокруг арены и камеру. Размер арены берётся из LevelManager.Current.
+    /// </summary>
     public class SimpleArenaBuilder : MonoBehaviour
     {
-        // Стандартная арена 22.4 × 11.1. В режиме уровней размер берётся из файла уровня (arenaWidth / arenaDepth).
+        // Арена демо-режима; в уровнях размер берётся из LevelDefinition
         private const float DefaultWidth = 22.4f;
         private const float DefaultDepth = 11.1f;
         private const float ArenaCenterZ = 0.15f;
+
+        private const float CameraDistance = 38f;
+        private const float CameraFocusOffsetZ = 0.75f;
+        private const float BoundaryThickness = 0.8f;
+        private const float BoundaryHeight = 2.0f;
+
+        private static readonly Vector3 RectColliderSize = new Vector3(2.35f, 1.2f, 0.85f);
+        private static readonly Vector3 ReflectorColliderSize = new Vector3(2.2f, 1.4f, 0.24f);
 
         public static float MinX { get; private set; } = -DefaultWidth * 0.5f;
         public static float MaxX { get; private set; } = DefaultWidth * 0.5f;
         public static float MinZ { get; private set; } = ArenaCenterZ - DefaultDepth * 0.5f;
         public static float MaxZ { get; private set; } = ArenaCenterZ + DefaultDepth * 0.5f;
 
-        [Header("Камера (как в референсе дизайнера)")]
+        private static float Width => MaxX - MinX;
+        private static float Depth => MaxZ - MinZ;
+        private static float CenterX => (MinX + MaxX) * 0.5f;
+        private static float CenterZ => (MinZ + MaxZ) * 0.5f;
+
+        [Header("Камера")]
         public float cameraPitch = 58f;
         public float cameraOrthoSize = 8.7f;
         public float cameraFollowSmooth = 0.28f;
@@ -49,63 +65,62 @@ namespace DemoRicochet
         private Vector3 _cameraVel;
         private Mesh _sharedCubeMesh;
 
+        // Демо-режим без выбранного уровня (не главное меню и не уровень)
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoCreateIfNeeded()
         {
             if (!LevelManager.IsMainMenu && !LevelManager.IsActive && FindAnyObjectByType<SimpleArenaBuilder>() == null)
-            {
-                GameObject go = new GameObject("SimpleArenaBuilder");
-                go.AddComponent<SimpleArenaBuilder>();
-            }
+                new GameObject("SimpleArenaBuilder").AddComponent<SimpleArenaBuilder>();
         }
 
         private void Awake()
         {
-            float width = DefaultWidth;
-            float depth = DefaultDepth;
-            if (LevelManager.IsActive && LevelManager.Current.arenaWidth > 0f && LevelManager.Current.arenaDepth > 0f)
-            {
-                width = LevelManager.Current.arenaWidth;
-                depth = LevelManager.Current.arenaDepth;
-            }
-            MinX = -width * 0.5f;
-            MaxX = width * 0.5f;
-            MinZ = ArenaCenterZ - depth * 0.5f;
-            MaxZ = ArenaCenterZ + depth * 0.5f;
+            SetArenaBounds();
 
             NeonVisuals.EnsureInitialized();
             NeonVisuals.SetArenaBounds(MinX, MaxX, MinZ, MaxZ);
-
             _sharedCubeMesh = BuildFlatCubeMesh();
 
             SetupCamera();
             BuildEnvironmentFromConfig();
-            BuildPhysicsBoundaryWalls();
-            BuildInteriorObstacles();
+            BuildBoundaryWalls();
+            if (!LevelManager.IsActive) BuildDemoObstacles();
         }
 
-        private void LateUpdate()
+        private void LateUpdate() => UpdateCameraFollow();
+
+        private static void SetArenaBounds()
         {
-            UpdateCameraFollow();
+            float width = DefaultWidth;
+            float depth = DefaultDepth;
+
+            LevelDefinition level = LevelManager.Current;
+            if (LevelManager.IsActive && level.arenaWidth > 0f && level.arenaDepth > 0f)
+            {
+                width = level.arenaWidth;
+                depth = level.arenaDepth;
+            }
+
+            MinX = -width * 0.5f;
+            MaxX = width * 0.5f;
+            MinZ = ArenaCenterZ - depth * 0.5f;
+            MaxZ = ArenaCenterZ + depth * 0.5f;
         }
+
+        #region Камера
 
         private void SetupCamera()
         {
             _cam = Camera.main;
             if (_cam == null)
             {
-                GameObject camObj = new GameObject("Main Camera");
-                camObj.tag = "MainCamera";
+                GameObject camObj = new GameObject("Main Camera") { tag = "MainCamera" };
                 _cam = camObj.AddComponent<Camera>();
             }
 
-            Light[] lights = FindObjectsByType<Light>();
-            for (int i = 0; i < lights.Length; i++)
+            foreach (Light light in FindObjectsByType<Light>())
             {
-                if (lights[i].type == LightType.Directional)
-                {
-                    lights[i].intensity = 0.2f;
-                }
+                if (light.type == LightType.Directional) light.intensity = 0.2f;
             }
 
             _cam.orthographic = true;
@@ -119,52 +134,53 @@ namespace DemoRicochet
             _cam.transparencySortAxis = Vector3.up;
 
             UniversalAdditionalCameraData camData = _cam.GetComponent<UniversalAdditionalCameraData>();
-            if (camData == null)
-            {
-                camData = _cam.gameObject.AddComponent<UniversalAdditionalCameraData>();
-            }
+            if (camData == null) camData = _cam.gameObject.AddComponent<UniversalAdditionalCameraData>();
             camData.renderPostProcessing = true;
             camData.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
             camData.antialiasingQuality = AntialiasingQuality.High;
 
-            _cameraFocus = new Vector3((MinX + MaxX) * 0.5f, 0f, (MinZ + MaxZ) * 0.5f + 0.75f);
+            _cameraFocus = ArenaFocusPoint();
             UpdateCameraPosition();
         }
 
+        private static Vector3 ArenaFocusPoint() => new Vector3(CenterX, 0f, CenterZ + CameraFocusOffsetZ);
+
+        // Камера слегка смещается за игроком, но арена всегда остаётся в кадре
         private void UpdateCameraFollow()
         {
             if (_cam == null) return;
-            if (_playerTank == null)
-            {
-                _playerTank = FindAnyObjectByType<SimpleBoxTank>();
-            }
+            if (_playerTank == null) _playerTank = FindAnyObjectByType<SimpleBoxTank>();
 
-            Vector3 arenaCenter = new Vector3((MinX + MaxX) * 0.5f, 0f, (MinZ + MaxZ) * 0.5f + 0.75f);
+            Vector3 arenaCenter = ArenaFocusPoint();
             Vector3 target = arenaCenter;
 
             if (_playerTank != null)
             {
                 Vector3 p = _playerTank.transform.position;
                 target.x += Mathf.Clamp((p.x - arenaCenter.x) * 0.07f, -0.6f, 0.6f);
-                target.z += Mathf.Clamp((p.z - arenaCenter.z + 0.75f) * 0.065f, -0.35f, 0.35f);
+                target.z += Mathf.Clamp((p.z - arenaCenter.z + CameraFocusOffsetZ) * 0.065f, -0.35f, 0.35f);
             }
 
             _cameraFocus = Vector3.SmoothDamp(_cameraFocus, target, ref _cameraVel, cameraFollowSmooth);
             UpdateCameraPosition();
         }
 
+        // Ортографический размер подбирается так, чтобы арена целиком влезала в экран любой пропорции
         private void UpdateCameraPosition()
         {
             float aspect = Screen.width / (float)Mathf.Max(1, Screen.height);
-            float width = MaxX - MinX;
-            float depth = MaxZ - MinZ;
-            float verticalFit = depth * 0.5f * Mathf.Sin(cameraPitch * Mathf.Deg2Rad) + 2.5f;
-            _cam.orthographicSize = Mathf.Max(cameraOrthoSize, Mathf.Max(verticalFit, (width * 0.5f + 2.6f) / aspect));
+            float verticalFit = Depth * 0.5f * Mathf.Sin(cameraPitch * Mathf.Deg2Rad) + 2.5f;
+            float horizontalFit = (Width * 0.5f + 2.6f) / aspect;
+            _cam.orthographicSize = Mathf.Max(cameraOrthoSize, Mathf.Max(verticalFit, horizontalFit));
 
             Quaternion rot = Quaternion.Euler(cameraPitch, 0f, 0f);
             _cam.transform.rotation = rot;
-            _cam.transform.position = _cameraFocus - (rot * Vector3.forward) * 38f;
+            _cam.transform.position = _cameraFocus - (rot * Vector3.forward) * CameraDistance;
         }
+
+        #endregion
+
+        #region Окружение
 
         private void BuildEnvironmentFromConfig()
         {
@@ -178,25 +194,21 @@ namespace DemoRicochet
             EnvConfig cfg = JsonUtility.FromJson<EnvConfig>(envAsset.text);
             if (cfg == null) return;
 
-            Transform envRoot = new GameObject("NeonEnvironment").transform;
-            envRoot.SetParent(transform, false);
-
+            Transform envRoot = CreateChild("NeonEnvironment", transform);
             Shader surface = NeonVisuals.SurfaceShader;
-            Shader ground = NeonVisuals.GroundShader;
-            Vector4 boundsVec = new Vector4(MinX, MaxX, MinZ, MaxZ);
+            Vector4 bounds = new Vector4(MinX, MaxX, MinZ, MaxZ);
 
-            float width = MaxX - MinX;
-            float depth = MaxZ - MinZ;
-            float centerX = (MinX + MaxX) * 0.5f;
-            float centerZ = (MinZ + MaxZ) * 0.5f;
+            BuildFloor(envRoot, cfg, surface, bounds);
+            BuildSurroundBlocks(envRoot, cfg, surface, bounds);
+            BuildRim(envRoot, cfg, surface, bounds);
 
-            // Декоративные блоки и световые пятна из конфига рассчитаны на стандартную арену —
-            // для арены другого размера просто растягиваем их общий родительский объект
-            Transform surroundRoot = new GameObject("Surround").transform;
-            surroundRoot.SetParent(envRoot, false);
-            surroundRoot.localScale = new Vector3(width / (cfg.maxX - cfg.minX), 1f, depth / (cfg.maxZ - cfg.minZ));
+            if (NeonVisuals.GroundShader != null)
+                CreateFloatingDust(envRoot, cfg, NeonVisuals.GroundShader);
+        }
 
-            Material floorMat = CreateSurfaceMat(surface, "FloorGrid", ToColor(cfg.floorColor), Color.black, 0f, boundsVec);
+        private void BuildFloor(Transform envRoot, EnvConfig cfg, Shader surface, Vector4 bounds)
+        {
+            Material floorMat = CreateSurfaceMat(surface, "FloorGrid", ToColor(cfg.floorColor), Color.black, 0f, bounds);
             floorMat.SetFloat("_AmbientLift", 0.28f);
             floorMat.SetFloat("_Grid", 1f);
             floorMat.SetVector("_GridColor", ToColor(cfg.gridColor).linear);
@@ -204,208 +216,66 @@ namespace DemoRicochet
             floorMat.SetFloat("_GridEmission", cfg.gridEmission);
             floorMat.SetFloat("_Rim", 0f);
 
-            GameObject floorObj = SpawnVisualCube("ArenaFloor", envRoot,
-                new Vector3(centerX, -0.13f, centerZ),
-                new Vector3(width, 0.26f, depth),
-                floorMat);
-            floorObj.AddComponent<BoxCollider>();
+            GameObject floor = SpawnVisualCube("ArenaFloor", envRoot,
+                new Vector3(CenterX, -0.13f, CenterZ), new Vector3(Width, 0.26f, Depth), floorMat);
+            floor.AddComponent<BoxCollider>();
 
-            Material voidMat = CreateSurfaceMat(surface, "VoidPlane", new Color(0.12f, 0.115f, 0.245f), Color.black, 0f, boundsVec);
+            Material voidMat = CreateSurfaceMat(surface, "VoidPlane", new Color(0.12f, 0.115f, 0.245f), Color.black, 0f, bounds);
             voidMat.SetFloat("_AmbientLift", 0.7f);
             voidMat.SetFloat("_ReceiveProjectileLights", 0f);
             SpawnVisualCube("LowerVoidPlane", envRoot,
-                new Vector3(centerX, -1.83f, centerZ),
-                new Vector3(width * 3f + 30f, 0.15f, depth * 3f + 30f),
-                voidMat);
+                new Vector3(CenterX, -1.83f, CenterZ), new Vector3(Width * 3f + 30f, 0.15f, Depth * 3f + 30f), voidMat);
+        }
 
-            if (cfg.blockPalette != null && cfg.blocks != null)
+        // Блоки в конфиге рассчитаны на стандартную арену — для другого размера растягиваем их общего родителя
+        private void BuildSurroundBlocks(Transform envRoot, EnvConfig cfg, Shader surface, Vector4 bounds)
+        {
+            Transform surroundRoot = CreateChild("Surround", envRoot);
+            surroundRoot.localScale = new Vector3(Width / (cfg.maxX - cfg.minX), 1f, Depth / (cfg.maxZ - cfg.minZ));
+
+            if (cfg.blockPalette == null || cfg.blocks == null) return;
+
+            Material[] paletteMats = new Material[cfg.blockPalette.Length];
+            for (int i = 0; i < paletteMats.Length; i++)
             {
-                Material[] paletteMats = new Material[cfg.blockPalette.Length];
-                for (int i = 0; i < paletteMats.Length; i++)
-                {
-                    paletteMats[i] = CreateSurfaceMat(surface, "SurroundBlock_" + i, ToColor(cfg.blockPalette[i].color), Color.black, 0f, boundsVec);
-                    paletteMats[i].SetFloat("_AmbientLift", 0.5f);
-                    paletteMats[i].SetFloat("_ReceiveProjectileLights", 0f);
-                }
-
-                for (int i = 0; i < cfg.blocks.Length; i++)
-                {
-                    BlockData b = cfg.blocks[i];
-                    int cIdx = Mathf.Clamp(b.color, 0, paletteMats.Length - 1);
-                    SpawnVisualCube("SurroundCube", surroundRoot, ToVec3(b.position), ToVec3(b.size), paletteMats[cIdx]);
-                }
+                paletteMats[i] = CreateSurfaceMat(surface, "SurroundBlock_" + i, ToColor(cfg.blockPalette[i].color), Color.black, 0f, bounds);
+                paletteMats[i].SetFloat("_AmbientLift", 0.5f);
+                paletteMats[i].SetFloat("_ReceiveProjectileLights", 0f);
             }
 
-            Material rimMat = CreateSurfaceMat(surface, "NeonRim", Color.black, ToColor(cfg.rimColor), cfg.rimEmission, boundsVec);
+            foreach (BlockData block in cfg.blocks)
+            {
+                int colorIndex = Mathf.Clamp(block.color, 0, paletteMats.Length - 1);
+                SpawnVisualCube("SurroundCube", surroundRoot, ToVec3(block.position), ToVec3(block.size), paletteMats[colorIndex]);
+            }
+        }
+
+        private void BuildRim(Transform envRoot, EnvConfig cfg, Shader surface, Vector4 bounds)
+        {
+            Material rimMat = CreateSurfaceMat(surface, "NeonRim", Color.black, ToColor(cfg.rimColor), cfg.rimEmission, bounds);
             rimMat.SetFloat("_Rim", 0f);
             rimMat.SetFloat("_ReceiveProjectileLights", 0f);
 
-            float arenaScale = Mathf.Max(1f, width / DefaultWidth);
-            float rimThickness = cfg.rimWidth * arenaScale * 1.25f;
-            Vector3 horizRim = new Vector3(width + rimThickness, rimThickness, rimThickness);
-            Vector3 vertRim = new Vector3(rimThickness, rimThickness, depth + rimThickness);
-            SpawnVisualCube("RimFront", envRoot, new Vector3(centerX, cfg.rimHeight, MinZ), horizRim, rimMat);
-            SpawnVisualCube("RimRear", envRoot, new Vector3(centerX, cfg.rimHeight, MaxZ), horizRim, rimMat);
-            SpawnVisualCube("RimLeft", envRoot, new Vector3(MinX, cfg.rimHeight, centerZ), vertRim, rimMat);
-            SpawnVisualCube("RimRight", envRoot, new Vector3(MaxX, cfg.rimHeight, centerZ), vertRim, rimMat);
-            SpawnVisualCube("RimLeftAccent", envRoot, new Vector3(MinX - 2.3f, cfg.rimHeight, centerZ), new Vector3(4.6f, 0.08f * arenaScale, 0.08f * arenaScale), rimMat);
-            SpawnVisualCube("RimRightAccent", envRoot, new Vector3(MaxX + 2.3f, cfg.rimHeight, centerZ), new Vector3(4.6f, 0.08f * arenaScale, 0.08f * arenaScale), rimMat);
+            float arenaScale = Mathf.Max(1f, Width / DefaultWidth);
+            float thickness = cfg.rimWidth * arenaScale * 1.25f;
+            float y = cfg.rimHeight;
+            Vector3 horizontal = new Vector3(Width + thickness, thickness, thickness);
+            Vector3 vertical = new Vector3(thickness, thickness, Depth + thickness);
+            Vector3 accent = new Vector3(4.6f, 0.08f * arenaScale, 0.08f * arenaScale);
 
-            if (ground != null)
-            {
-                CreateFloatingDust(envRoot, cfg, ground, width, depth, centerX, centerZ);
-            }
+            SpawnVisualCube("RimFront", envRoot, new Vector3(CenterX, y, MinZ), horizontal, rimMat);
+            SpawnVisualCube("RimRear", envRoot, new Vector3(CenterX, y, MaxZ), horizontal, rimMat);
+            SpawnVisualCube("RimLeft", envRoot, new Vector3(MinX, y, CenterZ), vertical, rimMat);
+            SpawnVisualCube("RimRight", envRoot, new Vector3(MaxX, y, CenterZ), vertical, rimMat);
+            SpawnVisualCube("RimLeftAccent", envRoot, new Vector3(MinX - 2.3f, y, CenterZ), accent, rimMat);
+            SpawnVisualCube("RimRightAccent", envRoot, new Vector3(MaxX + 2.3f, y, CenterZ), accent, rimMat);
         }
 
-        private void BuildPhysicsBoundaryWalls()
-        {
-            Transform wallsRoot = new GameObject("BoundaryColliders").transform;
-            wallsRoot.SetParent(transform, false);
-
-            float width = MaxX - MinX;
-            float depth = MaxZ - MinZ;
-            float centerX = (MinX + MaxX) * 0.5f;
-            float centerZ = (MinZ + MaxZ) * 0.5f;
-            const float thickness = 0.8f;
-            const float height = 2.0f;
-
-            CreateInvisibleWall("Bound_North", wallsRoot, new Vector3(centerX, 1f, MaxZ + thickness * 0.5f), new Vector3(width + thickness * 2f, height, thickness));
-            CreateInvisibleWall("Bound_South", wallsRoot, new Vector3(centerX, 1f, MinZ - thickness * 0.5f), new Vector3(width + thickness * 2f, height, thickness));
-            CreateInvisibleWall("Bound_East", wallsRoot, new Vector3(MaxX + thickness * 0.5f, 1f, centerZ), new Vector3(thickness, height, depth));
-            CreateInvisibleWall("Bound_West", wallsRoot, new Vector3(MinX - thickness * 0.5f, 1f, centerZ), new Vector3(thickness, height, depth));
-        }
-
-        private void BuildInteriorObstacles()
-        {
-            // В режиме уровней укрытия приходят из префаба уровня
-            if (LevelManager.IsActive) return;
-
-            Transform obsRoot = new GameObject("Obstacles").transform;
-            obsRoot.SetParent(transform, false);
-
-            SpawnCornerLObstacle("Cover/NT_Cover_L_Cyan", obsRoot, new Vector3(-6f, 0f, 3.8f), -180f, 1.15f, true);
-            SpawnCornerLObstacle("Cover/NT_Cover_L_Magenta", obsRoot, new Vector3(6f, 0f, 3.8f), -90f, 1.15f, false);
-
-            SpawnBoxObstacle("Cover/NT_Cover_Square", obsRoot, Vector3.zero, 0f,
-                new Vector3(1.125f, 1.15f, 1.125f), new Vector3(1.6f, 1.2f, 1.6f), true);
-
-            GameObject destLeft = SpawnBoxObstacle("Cover/NT_Cover_Rect_Cyan", obsRoot, new Vector3(-4.8f, 0f, -4.1f), 0f,
-                Vector3.one, new Vector3(2.35f, 1.2f, 0.85f), true);
-            SpecialObstacle.Attach(destLeft, ObstacleMode.Destructible);
-
-            GameObject destRight = SpawnBoxObstacle("Cover/NT_Cover_Rect_Magenta", obsRoot, new Vector3(4.8f, 0f, -4.1f), 0f,
-                Vector3.one, new Vector3(2.35f, 1.2f, 0.85f), false);
-            SpecialObstacle.Attach(destRight, ObstacleMode.Destructible);
-
-            GameObject gateLeft = SpawnBoxObstacle("Cover/NT_Cover_Rect_Cyan", obsRoot, new Vector3(-7.4f, 0f, -0.9f), -90f,
-                new Vector3(1f, 1.15f, 1f), new Vector3(2.35f, 1.2f, 0.85f), true);
-            SpecialObstacle.Attach(gateLeft, ObstacleMode.Gate, 0f);
-
-            GameObject gateRight = SpawnBoxObstacle("Cover/NT_Cover_Rect_Magenta", obsRoot, new Vector3(7.4f, 0f, -0.9f), -90f,
-                new Vector3(1f, 1.15f, 1f), new Vector3(2.35f, 1.2f, 0.85f), false);
-            SpecialObstacle.Attach(gateRight, ObstacleMode.Gate, 1.8f);
-
-            GameObject reflTop = SpawnBoxObstacle("Reflectors/NT_Reflector_Cyan", obsRoot, new Vector3(0.65f, 0f, 3.8f), -45f,
-                Vector3.one, new Vector3(2.2f, 1.4f, 0.24f), true);
-            SpecialObstacle.Attach(reflTop, ObstacleMode.Reflective);
-
-            GameObject reflLeft = SpawnBoxObstacle("Reflectors/NT_Reflector_Cyan", obsRoot, new Vector3(-3.7f, 0f, -1.5f), -45f,
-                Vector3.one, new Vector3(2.2f, 1.4f, 0.24f), true);
-            SpecialObstacle.Attach(reflLeft, ObstacleMode.Reflective);
-
-            GameObject reflRight = SpawnBoxObstacle("Reflectors/NT_Reflector_Magenta", obsRoot, new Vector3(4.0f, 0f, -1.5f), 45f,
-                Vector3.one, new Vector3(2.2f, 1.4f, 0.24f), false);
-            SpecialObstacle.Attach(reflRight, ObstacleMode.Reflective);
-        }
-
-        private GameObject SpawnBoxObstacle(string modelPath, Transform parent, Vector3 pos, float rotY, Vector3 modelScale, Vector3 colliderSize, bool isCyan)
-        {
-            GameObject root = new GameObject(modelPath.Replace("/", "_"));
-            root.transform.SetParent(parent, false);
-            root.transform.position = pos;
-            root.transform.rotation = Quaternion.Euler(0f, rotY, 0f);
-
-            GameObject model = NeonVisuals.InstantiateModel(modelPath, root.transform, "Model", isCyan);
-            if (model != null)
-            {
-                model.transform.localScale = modelScale;
-            }
-
-            BoxCollider col = root.AddComponent<BoxCollider>();
-            col.center = new Vector3(0f, colliderSize.y * 0.5f, 0f);
-            col.size = colliderSize;
-
-            NeonVisuals.CreateContactShadow(root.transform, new Vector2(colliderSize.x + 0.55f, colliderSize.z + 0.55f));
-            return root;
-        }
-
-        private void SpawnCornerLObstacle(string modelPath, Transform parent, Vector3 pos, float rotY, float scaleXZ, bool isCyan)
-        {
-            GameObject root = new GameObject(modelPath.Replace("/", "_"));
-            root.transform.SetParent(parent, false);
-            root.transform.position = pos;
-            root.transform.rotation = Quaternion.Euler(0f, rotY, 0f);
-
-            GameObject model = NeonVisuals.InstantiateModel(modelPath, root.transform, "Model", isCyan);
-            if (model != null)
-            {
-                model.transform.localScale = new Vector3(scaleXZ, 1f, scaleXZ);
-            }
-
-            BoxCollider colA = root.AddComponent<BoxCollider>();
-            colA.center = new Vector3(0f * scaleXZ, 0.6f, -0.66f * scaleXZ);
-            colA.size = new Vector3(2.0f * scaleXZ, 1.2f, 0.68f * scaleXZ);
-
-            BoxCollider colB = root.AddComponent<BoxCollider>();
-            colB.center = new Vector3(-0.66f * scaleXZ, 0.6f, 0f * scaleXZ);
-            colB.size = new Vector3(0.68f * scaleXZ, 1.2f, 2.0f * scaleXZ);
-
-            NeonVisuals.CreateContactShadow(root.transform, new Vector2(2.6f, 2.6f));
-        }
-
-        private static void CreateInvisibleWall(string name, Transform parent, Vector3 pos, Vector3 size)
-        {
-            GameObject wall = new GameObject(name);
-            wall.transform.SetParent(parent, false);
-            wall.transform.position = pos;
-            BoxCollider col = wall.AddComponent<BoxCollider>();
-            col.size = size;
-        }
-
-        private Material CreateSurfaceMat(Shader shader, string matName, Color albedo, Color emission, float emissionStrength, Vector4 bounds)
-        {
-            Material mat = new Material(shader) { name = matName, enableInstancing = true };
-            mat.SetVector("_Color", albedo.linear);
-            mat.SetVector("_EmissionColor", emission.linear * emissionStrength);
-            mat.SetVector("_ArenaBounds", bounds);
-            mat.SetFloat("_Metallic", 0.08f);
-            mat.SetFloat("_Glossiness", 0.30f);
-            mat.SetFloat("_Rim", 0.035f);
-            return mat;
-        }
-
-        private GameObject SpawnVisualCube(string name, Transform parent, Vector3 pos, Vector3 scale, Material mat)
-        {
-            GameObject obj = new GameObject(name);
-            obj.transform.SetParent(parent, false);
-            obj.transform.localPosition = pos;
-            obj.transform.localScale = scale;
-
-            MeshFilter mf = obj.AddComponent<MeshFilter>();
-            mf.sharedMesh = _sharedCubeMesh;
-
-            MeshRenderer mr = obj.AddComponent<MeshRenderer>();
-            mr.sharedMaterial = mat;
-            mr.shadowCastingMode = ShadowCastingMode.Off;
-            mr.receiveShadows = false;
-            return obj;
-        }
-
-        private void CreateFloatingDust(Transform parent, EnvConfig cfg, Shader groundShader, float width, float depth, float x, float z)
+        private void CreateFloatingDust(Transform parent, EnvConfig cfg, Shader groundShader)
         {
             GameObject dustObj = new GameObject("FloatingPurpleDust");
             dustObj.transform.SetParent(parent, false);
-            dustObj.transform.localPosition = new Vector3(x, 1.2f, z);
+            dustObj.transform.localPosition = new Vector3(CenterX, 1.2f, CenterZ);
 
             ParticleSystem dust = dustObj.AddComponent<ParticleSystem>();
             dust.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
@@ -425,14 +295,14 @@ namespace DemoRicochet
 
             var shape = dust.shape;
             shape.shapeType = ParticleSystemShapeType.Box;
-            shape.scale = new Vector3(width + 6f, 2.2f, depth + 4f);
+            shape.scale = new Vector3(Width + 6f, 2.2f, Depth + 4f);
 
-            var vel = dust.velocityOverLifetime;
-            vel.enabled = true;
-            vel.space = ParticleSystemSimulationSpace.World;
-            vel.x = new ParticleSystem.MinMaxCurve(-0.12f, 0.02f);
-            vel.y = new ParticleSystem.MinMaxCurve(0.035f, 0.10f);
-            vel.z = new ParticleSystem.MinMaxCurve(-0.17f, -0.08f);
+            var velocity = dust.velocityOverLifetime;
+            velocity.enabled = true;
+            velocity.space = ParticleSystemSimulationSpace.World;
+            velocity.x = new ParticleSystem.MinMaxCurve(-0.12f, 0.02f);
+            velocity.y = new ParticleSystem.MinMaxCurve(0.035f, 0.10f);
+            velocity.z = new ParticleSystem.MinMaxCurve(-0.17f, -0.08f);
 
             Material dustMat = new Material(groundShader) { name = "DustMat" };
             dustMat.SetFloat("_Mode", 0f);
@@ -446,24 +316,168 @@ namespace DemoRicochet
             psRenderer.shadowCastingMode = ShadowCastingMode.Off;
             psRenderer.receiveShadows = false;
 
+            // Сразу «прокручиваем» 12 секунд, чтобы пыль была на экране с первого кадра
             dust.Simulate(12f, true, true, true);
             dust.Play(true);
         }
 
-        private static Color ToColor(float[] c) => (c != null && c.Length >= 3) ? new Color(c[0], c[1], c[2], 1f) : Color.white;
-        private static Vector3 ToVec3(float[] p) => (p != null && p.Length >= 3) ? new Vector3(p[0], p[1], p[2]) : Vector3.zero;
+        #endregion
 
+        #region Физические границы
+
+        private void BuildBoundaryWalls()
+        {
+            Transform root = CreateChild("BoundaryColliders", transform);
+            float t = BoundaryThickness;
+            Vector3 northSouth = new Vector3(Width + t * 2f, BoundaryHeight, t);
+            Vector3 eastWest = new Vector3(t, BoundaryHeight, Depth);
+
+            CreateInvisibleWall("Bound_North", root, new Vector3(CenterX, 1f, MaxZ + t * 0.5f), northSouth);
+            CreateInvisibleWall("Bound_South", root, new Vector3(CenterX, 1f, MinZ - t * 0.5f), northSouth);
+            CreateInvisibleWall("Bound_East", root, new Vector3(MaxX + t * 0.5f, 1f, CenterZ), eastWest);
+            CreateInvisibleWall("Bound_West", root, new Vector3(MinX - t * 0.5f, 1f, CenterZ), eastWest);
+        }
+
+        private static void CreateInvisibleWall(string name, Transform parent, Vector3 pos, Vector3 size)
+        {
+            GameObject wall = new GameObject(name);
+            wall.transform.SetParent(parent, false);
+            wall.transform.position = pos;
+            wall.AddComponent<BoxCollider>().size = size;
+        }
+
+        #endregion
+
+        #region Демо-арена без уровня
+
+        // В уровнях укрытия приходят из префаба; эта расстановка нужна только демо-режиму
+        private void BuildDemoObstacles()
+        {
+            Transform root = CreateChild("Obstacles", transform);
+
+            SpawnCornerLObstacle("Cover/NT_Cover_L_Cyan", root, new Vector3(-6f, 0f, 3.8f), -180f, 1.15f, true);
+            SpawnCornerLObstacle("Cover/NT_Cover_L_Magenta", root, new Vector3(6f, 0f, 3.8f), -90f, 1.15f, false);
+
+            SpawnBoxObstacle("Cover/NT_Cover_Square", root, Vector3.zero, 0f,
+                new Vector3(1.125f, 1.15f, 1.125f), new Vector3(1.6f, 1.2f, 1.6f), true);
+
+            SpawnSpecial(ObstacleMode.Destructible, "Cover/NT_Cover_Rect_Cyan", root, new Vector3(-4.8f, 0f, -4.1f), 0f, Vector3.one, RectColliderSize, true);
+            SpawnSpecial(ObstacleMode.Destructible, "Cover/NT_Cover_Rect_Magenta", root, new Vector3(4.8f, 0f, -4.1f), 0f, Vector3.one, RectColliderSize, false);
+
+            Vector3 gateScale = new Vector3(1f, 1.15f, 1f);
+            SpawnSpecial(ObstacleMode.Gate, "Cover/NT_Cover_Rect_Cyan", root, new Vector3(-7.4f, 0f, -0.9f), -90f, gateScale, RectColliderSize, true, 0f);
+            SpawnSpecial(ObstacleMode.Gate, "Cover/NT_Cover_Rect_Magenta", root, new Vector3(7.4f, 0f, -0.9f), -90f, gateScale, RectColliderSize, false, 1.8f);
+
+            SpawnSpecial(ObstacleMode.Reflective, "Reflectors/NT_Reflector_Cyan", root, new Vector3(0.65f, 0f, 3.8f), -45f, Vector3.one, ReflectorColliderSize, true);
+            SpawnSpecial(ObstacleMode.Reflective, "Reflectors/NT_Reflector_Cyan", root, new Vector3(-3.7f, 0f, -1.5f), -45f, Vector3.one, ReflectorColliderSize, true);
+            SpawnSpecial(ObstacleMode.Reflective, "Reflectors/NT_Reflector_Magenta", root, new Vector3(4.0f, 0f, -1.5f), 45f, Vector3.one, ReflectorColliderSize, false);
+        }
+
+        private void SpawnSpecial(ObstacleMode mode, string modelPath, Transform parent, Vector3 pos, float rotY,
+            Vector3 modelScale, Vector3 colliderSize, bool isCyan, float gatePhase = 0f)
+        {
+            GameObject obstacle = SpawnBoxObstacle(modelPath, parent, pos, rotY, modelScale, colliderSize, isCyan);
+            SpecialObstacle.Attach(obstacle, mode, gatePhase);
+        }
+
+        private GameObject SpawnBoxObstacle(string modelPath, Transform parent, Vector3 pos, float rotY,
+            Vector3 modelScale, Vector3 colliderSize, bool isCyan)
+        {
+            GameObject root = CreateObstacleRoot(modelPath, parent, pos, rotY, modelScale, isCyan);
+
+            BoxCollider col = root.AddComponent<BoxCollider>();
+            col.center = new Vector3(0f, colliderSize.y * 0.5f, 0f);
+            col.size = colliderSize;
+
+            NeonVisuals.CreateContactShadow(root.transform, new Vector2(colliderSize.x + 0.55f, colliderSize.z + 0.55f));
+            return root;
+        }
+
+        // Г-образное укрытие — два коллайдера, по одному на каждую сторону
+        private void SpawnCornerLObstacle(string modelPath, Transform parent, Vector3 pos, float rotY, float scaleXZ, bool isCyan)
+        {
+            GameObject root = CreateObstacleRoot(modelPath, parent, pos, rotY, new Vector3(scaleXZ, 1f, scaleXZ), isCyan);
+
+            BoxCollider armA = root.AddComponent<BoxCollider>();
+            armA.center = new Vector3(0f, 0.6f, -0.66f * scaleXZ);
+            armA.size = new Vector3(2.0f * scaleXZ, 1.2f, 0.68f * scaleXZ);
+
+            BoxCollider armB = root.AddComponent<BoxCollider>();
+            armB.center = new Vector3(-0.66f * scaleXZ, 0.6f, 0f);
+            armB.size = new Vector3(0.68f * scaleXZ, 1.2f, 2.0f * scaleXZ);
+
+            NeonVisuals.CreateContactShadow(root.transform, new Vector2(2.6f, 2.6f));
+        }
+
+        private static GameObject CreateObstacleRoot(string modelPath, Transform parent, Vector3 pos, float rotY, Vector3 modelScale, bool isCyan)
+        {
+            GameObject root = new GameObject(modelPath.Replace("/", "_"));
+            root.transform.SetParent(parent, false);
+            root.transform.position = pos;
+            root.transform.rotation = Quaternion.Euler(0f, rotY, 0f);
+
+            GameObject model = NeonVisuals.InstantiateModel(modelPath, root.transform, "Model", isCyan);
+            if (model != null) model.transform.localScale = modelScale;
+
+            return root;
+        }
+
+        #endregion
+
+        #region Вспомогательное
+
+        private static Transform CreateChild(string name, Transform parent)
+        {
+            Transform child = new GameObject(name).transform;
+            child.SetParent(parent, false);
+            return child;
+        }
+
+        private static Material CreateSurfaceMat(Shader shader, string matName, Color albedo, Color emission, float emissionStrength, Vector4 bounds)
+        {
+            Material mat = new Material(shader) { name = matName, enableInstancing = true };
+            mat.SetVector("_Color", albedo.linear);
+            mat.SetVector("_EmissionColor", emission.linear * emissionStrength);
+            mat.SetVector("_ArenaBounds", bounds);
+            mat.SetFloat("_Metallic", 0.08f);
+            mat.SetFloat("_Glossiness", 0.30f);
+            mat.SetFloat("_Rim", 0.035f);
+            return mat;
+        }
+
+        private GameObject SpawnVisualCube(string name, Transform parent, Vector3 pos, Vector3 scale, Material mat)
+        {
+            GameObject obj = new GameObject(name);
+            obj.transform.SetParent(parent, false);
+            obj.transform.localPosition = pos;
+            obj.transform.localScale = scale;
+
+            obj.AddComponent<MeshFilter>().sharedMesh = _sharedCubeMesh;
+
+            MeshRenderer mr = obj.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = mat;
+            mr.shadowCastingMode = ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+            return obj;
+        }
+
+        private static Color ToColor(float[] c) => c != null && c.Length >= 3 ? new Color(c[0], c[1], c[2], 1f) : Color.white;
+        private static Vector3 ToVec3(float[] p) => p != null && p.Length >= 3 ? new Vector3(p[0], p[1], p[2]) : Vector3.zero;
+
+        // Куб с отдельными вершинами на каждую грань: плоское освещение без сглаживания рёбер
         private static Mesh BuildFlatCubeMesh()
         {
-            List<Vector3> vertices = new List<Vector3>(24);
-            List<Vector3> normals = new List<Vector3>(24);
-            List<int> triangles = new List<int>(36);
+            var vertices = new List<Vector3>(24);
+            var normals = new List<Vector3>(24);
+            var triangles = new List<int>(36);
             Vector3[] faceNormals = { Vector3.forward, Vector3.back, Vector3.right, Vector3.left, Vector3.up, Vector3.down };
+
             foreach (Vector3 normal in faceNormals)
             {
                 Vector3 u = Mathf.Abs(normal.y) > 0.5f ? Vector3.right : Vector3.Cross(Vector3.up, normal);
                 Vector3 v = Vector3.Cross(normal, u);
                 int start = vertices.Count;
+
                 vertices.Add((normal - u - v) * 0.5f);
                 vertices.Add((normal + u - v) * 0.5f);
                 vertices.Add((normal + u + v) * 0.5f);
@@ -471,6 +485,7 @@ namespace DemoRicochet
                 for (int i = 0; i < 4; i++) normals.Add(normal);
                 triangles.AddRange(new[] { start, start + 1, start + 2, start, start + 2, start + 3 });
             }
+
             Mesh mesh = new Mesh { name = "FlatSurroundCube" };
             mesh.SetVertices(vertices);
             mesh.SetNormals(normals);
@@ -478,5 +493,7 @@ namespace DemoRicochet
             mesh.RecalculateBounds();
             return mesh;
         }
+
+        #endregion
     }
 }
