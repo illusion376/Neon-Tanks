@@ -18,10 +18,10 @@ namespace DemoRicochet
         
         [Header("Громкость")]
         [Range(0f, 1f)] public float masterVolume = 0.5f;
-        [Tooltip("Громкость всех эффектов, включая гул двигателей (музыка — отдельно)")]
-        [Range(0f, 1f)] public float sfxVolume = 0.78f;
-        [Tooltip("Громкость фоновой музыки (0.22 ≈ на 5 дБ тише прежних 0.4)")]
-        [Range(0f, 1f)] public float musicVolume = 0.22f;
+        [Tooltip("Громкость всех эффектов, включая гул двигателей (по умолчанию 50% на ползунке; музыка — отдельно)")]
+        [Range(0f, 1f)] public float sfxVolume = 0.5f;
+        [Tooltip("Громкость фоновой музыки (по умолчанию 30% на ползунке)")]
+        [Range(0f, 1f)] public float musicVolume = 0.3f;
         [Tooltip("Во сколько раз приглушать музыку на паузе и экране результата")]
         [Range(0f, 1f)] public float musicDuckOnPause = 0.4f;
         [Tooltip("Во сколько раз музыка тише в главном меню (заставке), чем в игре")]
@@ -43,7 +43,7 @@ namespace DemoRicochet
         /// <summary>Итоговая громкость эффектов (для лупов двигателей).</summary>
         public static float SfxVolume => _instance != null ? _instance.masterVolume * _instance.sfxVolume : 0f;
 
-        public static float EffectsVolume => EnsureInstance() ? _instance.sfxVolume : 0.78f;
+        public static float EffectsVolume => EnsureInstance() ? _instance.sfxVolume : 0.5f;
 
         public static void SetEffectsVolume(float volume)
         {
@@ -59,7 +59,7 @@ namespace DemoRicochet
             PlayerPrefs.SetFloat(SfxVolumeKey, _instance.sfxVolume);
         }
 
-        public static float MusicVolume => EnsureInstance() ? _instance.musicVolume : 0.22f;
+        public static float MusicVolume => EnsureInstance() ? _instance.musicVolume : 0.3f;
 
         public static void SetMusicVolume(float volume)
         {
