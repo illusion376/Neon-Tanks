@@ -333,6 +333,8 @@ namespace DemoRicochet
             // Удержание ЛКМ / пробела / курка — автоогонь с обычной перезарядкой
             bool firePressed = _stickFireRequested;
             _stickFireRequested = false;
+            // Касание стика прицела на телефоне — один выстрел по направлению ствола
+            if (MobileControls.TapShotPending) firePressed = true;
 #if ENABLE_INPUT_SYSTEM
             if (Gamepad.current != null && Gamepad.current.rightTrigger.isPressed)
                 firePressed = true;
@@ -346,6 +348,7 @@ namespace DemoRicochet
 #endif
             if (!firePressed || _cooldownTimer > 0f) return;
 
+            MobileControls.ConsumeTapShot();
             bool rapid = _health != null && _health.HasRapidFire;
             _cooldownTimer = rapid ? fireCooldown * 0.65f : fireCooldown;
             _cooldownDuration = _cooldownTimer;

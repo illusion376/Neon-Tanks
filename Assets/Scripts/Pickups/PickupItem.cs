@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace DemoRicochet
@@ -26,7 +27,6 @@ namespace DemoRicochet
         private Transform _glowTransform;
         private Material _haloMat;
         private Material _glowMat;
-        private Material _rapidIconMat;
         private MaterialPropertyBlock _emissionBlock;
 
         private bool _isCollected;
@@ -126,42 +126,59 @@ namespace DemoRicochet
             }
         }
 
+        private static Material _iconMaterial;
+
+        // Sprites/Default не зависит от света сцены и всегда входит в сборку (Graphics → Always Included).
+        // Цвет ярче 1 — чтобы значок светился неоном через Bloom.
+        private static Material IconMaterial
+        {
+            get
+            {
+                if (_iconMaterial != null) return _iconMaterial;
+                Shader shader = Shader.Find("Sprites/Default");
+                if (shader == null) return null;
+                _iconMaterial = new Material(shader) { name = "TripleShotIconMat" };
+                _iconMaterial.SetColor("_Color", new Color(1.25f, 1.18f, 1.05f, 1f));
+                return _iconMaterial;
+            }
+        }
+
         private GameObject BuildRapidFireModel()
         {
-            Shader shader = Resources.Load<Shader>("Shaders/NeonPickup");
-            
-            if (shader == null) return NeonVisuals.InstantiateModel("Pickups/NT_Pickup_RapidFire", transform, "PickupMesh");
-            
-            if (_rapidIconMat == null)
-            {
-                _rapidIconMat = new Material(shader) { name = "RapidFirePickupIconMat" };
-                _rapidIconMat.SetFloat("_Mode", 2f);
-                Color color = GetPickupColor(PickupType.RapidFire).linear;
-                _rapidIconMat.SetVector(_colorId, new Vector4(color.r * 4f, color.g * 4f, color.b * 4f, 1f));
-            }
+            // Золотой ободок и значок-спрайт над ним
+            Sprite iconSprite = Resources.Load<Sprite>("NeonTanks/UI/TripleShotIcon");
+            if (iconSprite == null) return NeonVisuals.InstantiateModel("Pickups/NT_Pickup_RapidFire", transform, "PickupMesh");
 
             GameObject model = new GameObject("PickupMesh");
             model.transform.SetParent(transform, false);
-            
-            for (int i = 0; i < 2; i++)
+
+            GameObject rim = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            rim.name = "GoldRim";
+            rim.transform.SetParent(model.transform, false);
+            rim.transform.localPosition = Vector3.up * 0.04f;
+            rim.transform.localScale = new Vector3(1.04f, 0.04f, 1.04f);
+            // На Android Unity вырезает CapsuleCollider из сборки, и у цилиндра коллайдера нет.
+            // Без проверки здесь был NullReferenceException: ободок оставался с розовым материалом ошибки,
+            // а значок не создавался — тот самый «фиолетовый круг»
+            Collider rimCollider = rim.GetComponent<Collider>();
+            if (rimCollider != null)
             {
-                GameObject disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                disc.name = i == 0 ? "GoldRim" : "DarkFace";
-                disc.transform.SetParent(model.transform, false);
-                disc.transform.localPosition = Vector3.up * (i == 0 ? 0.04f : 0.085f);
-                disc.transform.localScale = i == 0 ? new Vector3(1.04f, 0.04f, 1.04f) : new Vector3(0.92f, 0.013f, 0.92f);
-                Collider collider = disc.GetComponent<Collider>();
-                collider.enabled = false;
-                Destroy(collider);
-                Renderer renderer = disc.GetComponent<Renderer>();
-                renderer.sharedMaterial = NeonVisuals.GetMaterial(i == 0 ? "NTM_Yellow" : "NTM_Dark");
-                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                renderer.receiveShadows = false;
+                rimCollider.enabled = false;
+                Destroy(rimCollider);
             }
-            GameObject icon = NeonVisuals.CreateEffectQuad("TripleShotIcon", model.transform, _rapidIconMat);
-            icon.transform.localPosition = Vector3.up * 0.104f;
+            Renderer rimRenderer = rim.GetComponent<Renderer>();
+            rimRenderer.sharedMaterial = NeonVisuals.GetMaterial("NTM_Yellow");
+            rimRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            rimRenderer.receiveShadows = false;
+
+            GameObject icon = new GameObject("TripleShotIcon");
+            icon.transform.SetParent(model.transform, false);
+            icon.transform.localPosition = Vector3.up * 0.13f;
             icon.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            icon.transform.localScale = new Vector3(0.83f, 0.83f, 1f);
+            icon.transform.localScale = new Vector3(0.98f, 0.98f, 1f);
+            SpriteRenderer iconRenderer = icon.AddComponent<SpriteRenderer>();
+            iconRenderer.sprite = iconSprite;
+            if (IconMaterial != null) iconRenderer.sharedMaterial = IconMaterial;
             
             return model;
         }
@@ -199,13 +216,13 @@ namespace DemoRicochet
 
         private void CheckTankCollection()
         {
-            TankHealth[] tanks = FindObjectsByType<TankHealth>();
-            
+            IReadOnlyList<TankHealth> tanks = TankHealth.ActiveTanks;
+
             float rSqr = pickupRadius * pickupRadius;
-            
+
             Vector3 myPos = transform.position;
 
-            for (int i = 0; i < tanks.Length; i++)
+            for (int i = 0; i < tanks.Count; i++)
             {
                 TankHealth tank = tanks[i];
                 
@@ -345,7 +362,6 @@ namespace DemoRicochet
             
             if (_glowMat != null) Destroy(_glowMat);
             
-            if (_rapidIconMat != null) Destroy(_rapidIconMat);
         }
     }
 }

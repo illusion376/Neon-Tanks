@@ -64,6 +64,7 @@ namespace DemoRicochet
         private Vector3 _cameraFocus;
         private Vector3 _cameraVel;
         private Mesh _sharedCubeMesh;
+        private GameObject _dust;
 
         // Демо-режим без выбранного уровня (не главное меню и не уровень)
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -88,6 +89,16 @@ namespace DemoRicochet
         }
 
         private void LateUpdate() => UpdateCameraFollow();
+
+        private void OnEnable() => GraphicsQuality.Changed += RefreshDust;
+
+        private void OnDisable() => GraphicsQuality.Changed -= RefreshDust;
+
+        // На низкой графике летающая пыль выключена
+        private void RefreshDust()
+        {
+            if (_dust != null) _dust.SetActive(GraphicsQuality.Current != GraphicsLevel.Low);
+        }
 
         private static void SetArenaBounds()
         {
@@ -136,8 +147,7 @@ namespace DemoRicochet
             UniversalAdditionalCameraData camData = _cam.GetComponent<UniversalAdditionalCameraData>();
             if (camData == null) camData = _cam.gameObject.AddComponent<UniversalAdditionalCameraData>();
             camData.renderPostProcessing = true;
-            camData.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
-            camData.antialiasingQuality = AntialiasingQuality.High;
+            GraphicsQuality.ApplyCamera(_cam);
 
             _cameraFocus = ArenaFocusPoint();
             UpdateCameraPosition();
@@ -319,6 +329,8 @@ namespace DemoRicochet
             // Сразу «прокручиваем» 12 секунд, чтобы пыль была на экране с первого кадра
             dust.Simulate(12f, true, true, true);
             dust.Play(true);
+            _dust = dustObj;
+            RefreshDust();
         }
 
         #endregion

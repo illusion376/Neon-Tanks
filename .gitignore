@@ -4,6 +4,8 @@
 [Bb]uild/
 [Bb]uilds/
 [Ll]ogs/
+# Временные файлы сборки Android (C++ GameActivity), Unity создаёт их заново при каждой сборке
+.utmp/
 [Uu]ser[Ss]ettings/
 .vs/
 .idea/

@@ -36,6 +36,8 @@ Shader "NeonRicochet/NeonSurface"
             float4 _NeonProjectileLights[8];
             float4 _NeonProjectileColors[8];
             int _NeonProjectileLightCount;
+            // Global quality: 0 = high (full), 1 = medium, 2 = low. Set by GraphicsQuality.cs.
+            float _NeonDetailReduction;
             v2f vert(appdata v)
             {
                 UNITY_SETUP_INSTANCE_ID(v);
@@ -76,16 +78,20 @@ Shader "NeonRicochet/NeonSurface"
 
                 // A broad polished lobe plus a smaller gloss lobe reveal the imported bevels.
                 // No screen-space noise or fine procedural stripes: roughness remains stable on mobile.
-                float3 halfDirection=normalize(key+v);
-                float ndh=saturate(dot(n,halfDirection));
-                float broad=pow(ndh,lerp(8,28,smoothness));
-                float gloss=pow(ndh,lerp(20,96,smoothness))*(1.0-saturate(normalVariance*4.0));
                 float3 reflectance=lerp(float3(.04,.04,.04),albedo,metallic);
-                float fresnel=pow(1-ndv,5);
-                reflectance=lerp(reflectance,float3(.7,.78,.9),fresnel*.45);
-                color+=reflectance*float3(.76,.86,1)*(broad*.65+gloss*2.2)*ndl;
-                float rim=pow(1-ndv,3)*max(_Rim,0);
-                color+=float3(.075,.11,.19)*rim*(.35+.65*hemisphere);
+                // Low quality skips the specular lobes, fresnel and rim (five pow() per pixel).
+                [branch] if(_NeonDetailReduction<1.5)
+                {
+                    float3 halfDirection=normalize(key+v);
+                    float ndh=saturate(dot(n,halfDirection));
+                    float broad=pow(ndh,lerp(8,28,smoothness));
+                    float gloss=pow(ndh,lerp(20,96,smoothness))*(1.0-saturate(normalVariance*4.0));
+                    float fresnel=pow(1-ndv,5);
+                    reflectance=lerp(reflectance,float3(.7,.78,.9),fresnel*.45);
+                    color+=reflectance*float3(.76,.86,1)*(broad*.65+gloss*2.2)*ndl;
+                    float rim=pow(1-ndv,3)*max(_Rim,0);
+                    color+=float3(.075,.11,.19)*rim*(.35+.65*hemisphere);
+                }
 
                 // A restrained violet bounce follows the entire perimeter, with no corner hotspots.
                 float edgeDistance=min(min(abs(i.world.x-_ArenaBounds.x),abs(i.world.x-_ArenaBounds.y)),
@@ -94,11 +100,13 @@ Shader "NeonRicochet/NeonSurface"
                 color+=(albedo*2.6+float3(.035,.015,.05))*float3(.65,.095,1.1)*frameBounce*_FrameGlow;
                 // Decorative blocks and the lower plane use the room fill instead of short-range
                 // projectile lights. Their shared materials skip this expensive full-screen work.
-                [branch] if(_ReceiveProjectileLights>.5)
+                // Low quality skips projectile lights; medium and high light from all eight.
+                int lightCount=_NeonDetailReduction>1.5?0:_NeonProjectileLightCount;
+                [branch] if(_ReceiveProjectileLights>.5&&lightCount>0)
                 {
                     [unroll] for(int lightIndex=0;lightIndex<8;lightIndex++)
                     {
-                        if(lightIndex<_NeonProjectileLightCount)
+                        if(lightIndex<lightCount)
                         {
                             float3 offset=_NeonProjectileLights[lightIndex].xyz-i.world;
                             float distanceSquared=max(dot(offset,offset),.001);

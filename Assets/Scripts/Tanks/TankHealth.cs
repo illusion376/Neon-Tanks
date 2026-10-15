@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace DemoRicochet
@@ -21,11 +22,20 @@ namespace DemoRicochet
 
         public static event System.Action<bool> OnTankKilled;
 
+        // Список танков на арене: бонусы проверяют его каждый кадр вместо поиска по всей сцене
+        private static readonly List<TankHealth> _activeTanks = new List<TankHealth>(16);
+        public static IReadOnlyList<TankHealth> ActiveTanks => _activeTanks;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStaticEvents()
         {
             OnTankKilled = null;
+            _activeTanks.Clear();
         }
+
+        private void OnEnable() => _activeTanks.Add(this);
+
+        private void OnDisable() => _activeTanks.Remove(this);
 
         public bool isCyanTeam = true;
         public bool IsDead => _isDead;
