@@ -42,6 +42,7 @@ Shader "NeonRicochet/NeonPickup"
             };
             float4 _Color;
             float _Mode, _Strength, _Pulse, _HexScale, _EffectTime;
+            float _NeonDetailReduction;
 
             v2f vert(appdata v)
             {
@@ -85,7 +86,10 @@ Shader "NeonRicochet/NeonPickup"
                     float3 weight = pow(abs(normalize(i.localNormal)), 6);
                     weight /= max(weight.x + weight.y + weight.z, .001);
                     float3 p = i.localPos * _HexScale;
-                    float hex = HexLines(p.yz) * weight.x + HexLines(p.xz) * weight.y + HexLines(p.xy) * weight.z;
+                    float hex;
+                    // На низкой графике соты считаются в одной проекции вместо трёх.
+                    [branch] if (_NeonDetailReduction > 1.5) hex = HexLines(p.xz);
+                    else hex = HexLines(p.yz) * weight.x + HexLines(p.xz) * weight.y + HexLines(p.xy) * weight.z;
                     float rim = pow(1 - saturate(abs(dot(normalize(i.worldNormal), normalize(i.viewDir)))), 3);
                     float breathe = .96 + .04 * sin(_EffectTime * 3);
                     alpha = (.018 + hex * .13 + rim * .42) * breathe;

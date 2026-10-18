@@ -22,6 +22,7 @@ namespace DemoRicochet
         private static LevelList _list;
         private static GameMode _mode;
         private static int _killDropsLeft;
+        private static bool _rapidFireDropped;
 
         public static LevelDefinition Current { get; private set; }
         public static int CurrentIndex { get; private set; }
@@ -40,6 +41,7 @@ namespace DemoRicochet
             _list = null;
             _mode = GameMode.MainMenu;
             _killDropsLeft = 0;
+            _rapidFireDropped = false;
             Current = null;
             CurrentIndex = 0;
             SceneManager.sceneLoaded -= OnSceneLoaded;
@@ -147,6 +149,8 @@ namespace DemoRicochet
 
             SpawnPlayer(level);
             _killDropsLeft = level.killDropLimit;
+            // На уровнях без бонусов за убийства (уровень 1) тройной выстрел тоже не выпадает
+            _rapidFireDropped = level.killDropLimit <= 0;
 
             new GameObject("GameHUD").AddComponent<GameHUD>();
         }
@@ -182,20 +186,24 @@ namespace DemoRicochet
         private static void HandleTankKilled(bool killedTankWasCyan)
         {
             if (!IsActive || killedTankWasCyan) return;
-            if (!CanDropMore()) return;
-            if (Random.value > Current.killDropChance) return;
 
             SimpleBoxTank player = Object.FindAnyObjectByType<SimpleBoxTank>();
             if (player == null || player.Health == null || player.Health.IsDead) return;
 
+            // В кампании тройной выстрел выпадает за первое убийство сверх лимита уровня,
+            // поэтому ремонт, щит и ускорение выпадают как раньше
+            bool bonusRapidFire = !IsEndless && !_rapidFireDropped;
+            if (!bonusRapidFire && (!CanDropMore() || Random.value > Current.killDropChance)) return;
+
+            PickupType type = bonusRapidFire ? PickupType.RapidFire : ChooseDropType(player.Health);
             if (!TryFindDropPoint(player.transform.position, out Vector3 point)) return;
 
-            PickupType type = ChooseDropType(player.Health);
             PickupItem drop = PickupItem.SpawnPickup("Drop_" + type, type, point);
             drop.respawnDelay = 0f;
             drop.playerOnly = true;
 
-            if (!IsEndless) _killDropsLeft--;
+            if (bonusRapidFire) _rapidFireDropped = true;
+            else if (!IsEndless) _killDropsLeft--;
             NeonAudio.PickupSpawn(point);
         }
 
@@ -205,11 +213,14 @@ namespace DemoRicochet
             return _killDropsLeft > 0;
         }
 
-        // Раненому — ремонт, иначе случайно щит, скорость или тройной выстрел
+        // Раненому — ремонт, иначе случайно щит или скорость (в бесконечном бою ещё тройной выстрел).
+        // В кампании тройной выстрел уже выпал за первое убийство.
         private static PickupType ChooseDropType(TankHealth playerHealth)
         {
             if (playerHealth.currentHealth < playerHealth.maxHealth) return PickupType.Repair;
-            return (PickupType)Random.Range((int)PickupType.Shield, (int)PickupType.RapidFire + 1);
+
+            PickupType last = IsEndless ? PickupType.RapidFire : PickupType.Speed;
+            return (PickupType)Random.Range((int)PickupType.Shield, (int)last + 1);
         }
 
         // Ищем свободное место на окружности вокруг игрока, начиная со случайного угла

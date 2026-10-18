@@ -8,6 +8,7 @@ namespace DemoRicochet
 {
     /// <summary>
     /// Левый OnScreenStick — движение, правый — прицел; отпускание — выстрел.
+    /// Короткое касание правого стика — один выстрел по направлению ствола.
     /// Создаётся вместе с GameHUD, поэтому ввод сбрасывается при смене уровня.
     /// </summary>
     public class MobileControls : MonoBehaviour
@@ -17,6 +18,11 @@ namespace DemoRicochet
 #else
         public static bool IsTouchMode => Application.isMobilePlatform;
 #endif
+
+        /// <summary>Игрок коснулся стика прицела: нужен один выстрел туда, куда смотрит ствол.</summary>
+        public static bool TapShotPending { get; private set; }
+
+        public static void ConsumeTapShot() => TapShotPending = false;
 
         private GameObject _canvasObject;
         private Image _aimBackground;
@@ -53,7 +59,14 @@ namespace DemoRicochet
             _cooldownFill.fillOrigin = (int)Image.Origin360.Top;
             _cooldownFill.fillClockwise = true;
             _cooldownFill.fillAmount = 1f;
+
+            TapShotPending = false;
+#if ENABLE_INPUT_SYSTEM
+            _aimBackground.GetComponentInChildren<MobileStick>().Tapped += () => TapShotPending = true;
+#endif
         }
+
+        private void OnDestroy() => TapShotPending = false;
 
         public void SetFireCooldown(float progress)
         {

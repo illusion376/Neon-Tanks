@@ -454,9 +454,13 @@ namespace DemoRicochet
             }
 
             int seconds = Mathf.FloorToInt(_remainingTime);
-            string subtitle = LevelManager.IsEndless
-                ? $"Уничтожено: {_cyanScore}   •   Время: {seconds / 60:00}:{seconds % 60:00}"
-                : $"Осталось врагов: {_enemiesLeft}";
+            string subtitle = $"Осталось врагов: {_enemiesLeft}";
+            if (LevelManager.IsEndless)
+            {
+                bool newRecord = EndlessRecords.Add(_cyanScore, seconds);
+                string record = newRecord ? "НОВЫЙ РЕКОРД!" : $"Рекорд: {EndlessRecords.Best}";
+                subtitle = $"Уничтожено: {_cyanScore}   •   Время: {seconds / 60:00}:{seconds % 60:00}\n{record}";
+            }
             ShowDefeat(subtitle, "ЗАНОВО");
         }
 
@@ -553,7 +557,9 @@ namespace DemoRicochet
             root.gameObject.AddComponent<UISafeArea>();
             _gameplayHud = root.gameObject;
 
-            Image scoreFrame = CreateImage("ScorePanel", root, new Vector2(390f, 84f), new Vector2(0.5f, 1f), new Vector2(0f, -47f), Color.white);
+            Image scoreFrame = CreateImage("ScorePanel", root, new Vector2(390f, 84f), new Vector2(0.5f, 1f), new Vector2(0f, -38f), Color.white);
+            // Табло ближе к верхнему краю и чуть меньше, чтобы не закрывать арену
+            scoreFrame.rectTransform.localScale = Vector3.one * 0.85f;
             scoreFrame.sprite = Resources.Load<Sprite>("NeonTanks/UI/ScoreFrame");
             RectTransform scorePanel = scoreFrame.rectTransform;
             _cyanScoreText = CreateLabel("00", scorePanel, 43, Cyan, new Vector2(84f, 54f), new Vector2(0.5f, 0.5f), new Vector2(-117f, -1f), FontStyle.Bold);
@@ -582,7 +588,7 @@ namespace DemoRicochet
                 _levelIntro = BuildLevelIntro(root);
             }
 
-            Button pauseBtn = CreateButton("PauseButton", root, "", new Vector2(58f, 58f), new Vector2(1f, 1f), new Vector2(-51f, -47f), Color.white, () => SetPaused(!_isPaused));
+            Button pauseBtn = CreateButton("PauseButton", root, "", new Vector2(58f, 58f), new Vector2(1f, 1f), new Vector2(-46f, -38f), Color.white, () => SetPaused(!_isPaused));
             pauseBtn.image.sprite = Resources.Load<Sprite>("NeonTanks/UI/PauseButton");
 
             _respawnBanner = BuildRespawnBanner(root);
@@ -666,6 +672,7 @@ namespace DemoRicochet
             safeArea.gameObject.AddComponent<UISafeArea>();
             Image panel = CreateImage("DefeatCard", safeArea, new Vector2(640f, 388f),
                 new Vector2(0.5f, 0.5f), Vector2.zero, Color.white);
+            panel.gameObject.AddComponent<UIFitToParent>();
             panel.sprite = Resources.Load<Sprite>("NeonTanks/UI/DefeatPanel");
 
             Image badge = CreateImage("BrokenTank", panel.transform, new Vector2(184f, 124f),
@@ -959,24 +966,26 @@ namespace DemoRicochet
             RectTransform safeArea = CreateRect("SafeArea", backdrop.transform, Vector2.zero, Vector2.zero, Vector2.zero);
             safeArea.gameObject.AddComponent<UISafeArea>();
 
-            Image panel = CreateImage("PauseCard", safeArea, new Vector2(460f, 540f), new Vector2(0.5f, 0.5f), Vector2.zero, Color.white);
+            Image panel = CreateImage("PauseCard", safeArea, new Vector2(460f, 620f), new Vector2(0.5f, 0.5f), Vector2.zero, Color.white);
+            panel.gameObject.AddComponent<UIFitToParent>();
             panel.sprite = Resources.Load<Sprite>("NeonTanks/UI/PausePanel");
             panel.type = Image.Type.Sliced;
 
-            CreateLabel("ПАУЗА", panel.transform, 42, Color.white, new Vector2(200f, 60f), new Vector2(0.5f, 0.5f), new Vector2(0f, 204f), FontStyle.Bold);
+            CreateLabel("ПАУЗА", panel.transform, 42, Color.white, new Vector2(200f, 60f), new Vector2(0.5f, 0.5f), new Vector2(0f, 244f), FontStyle.Bold);
             for (int i = 0; i < 2; i++)
             {
-                Image accent = CreateImage("TitleAccent_" + i, panel.transform, new Vector2(90f, 4f), new Vector2(0.5f, 0.5f), new Vector2(i == 0 ? -152f : 152f, 204f), i == 0 ? Cyan : Magenta);
+                Image accent = CreateImage("TitleAccent_" + i, panel.transform, new Vector2(90f, 4f), new Vector2(0.5f, 0.5f), new Vector2(i == 0 ? -152f : 152f, 244f), i == 0 ? Cyan : Magenta);
                 accent.sprite = Resources.Load<Sprite>("NeonTanks/UI/PauseTitleAccent");
                 if (i == 1) accent.rectTransform.localScale = new Vector3(-1f, 1f, 1f);
             }
 
-            CreatePauseMenuButton(panel.transform, "ContinueButton", "ПРОДОЛЖИТЬ", "PauseContinue", "PausePlayIcon", 128f, () => SetPaused(false));
-            CreatePauseMenuButton(panel.transform, "RestartButton", "НАЧАТЬ ЗАНОВО", "PauseRestart", "PauseRestartIcon", 51f, RestartMatch);
-            CreatePauseMenuButton(panel.transform, "MainMenuButton", "ГЛАВНОЕ МЕНЮ", "PauseRestart", "PauseHomeIcon", -26f, LevelManager.ReturnToMainMenu);
+            CreatePauseMenuButton(panel.transform, "ContinueButton", "ПРОДОЛЖИТЬ", "PauseContinue", "PausePlayIcon", 168f, () => SetPaused(false));
+            CreatePauseMenuButton(panel.transform, "RestartButton", "НАЧАТЬ ЗАНОВО", "PauseRestart", "PauseRestartIcon", 91f, RestartMatch);
+            CreatePauseMenuButton(panel.transform, "MainMenuButton", "ГЛАВНОЕ МЕНЮ", "PauseRestart", "PauseHomeIcon", 14f, LevelManager.ReturnToMainMenu);
 
-            _sfxVolumeSlider = CreateVolumeSliderRow(panel.transform, "ЗВУКИ", -92f, -126f, NeonAudio.EffectsVolume, out _sfxVolumeText, NeonAudio.SetEffectsVolume);
-            _musicVolumeSlider = CreateVolumeSliderRow(panel.transform, "МУЗЫКА", -168f, -202f, NeonAudio.MusicVolume, out _musicVolumeText, NeonAudio.SetMusicVolume);
+            _sfxVolumeSlider = CreateVolumeSliderRow(panel.transform, "ЗВУКИ", -52f, -86f, NeonAudio.EffectsVolume, out _sfxVolumeText, NeonAudio.SetEffectsVolume);
+            _musicVolumeSlider = CreateVolumeSliderRow(panel.transform, "МУЗЫКА", -128f, -162f, NeonAudio.MusicVolume, out _musicVolumeText, NeonAudio.SetMusicVolume);
+            GraphicsQualitySelector.Create(panel.transform, _font, new Vector2(0f, -248f));
             return backdrop.gameObject;
         }
 
@@ -1076,6 +1085,7 @@ namespace DemoRicochet
             bdRect.sizeDelta = Vector2.zero;
 
             RectTransform card = CreateImage("ModalCard", backdrop.transform, new Vector2(420f, secondaryAction != null ? 250f : 210f), new Vector2(0.5f, 0.5f), Vector2.zero, OverlayBg).rectTransform;
+            card.gameObject.AddComponent<UIFitToParent>();
             accentLine = CreateImage("TopAccent", card, new Vector2(420f, 3f), new Vector2(0.5f, 1f), new Vector2(0f, -1.5f), accentColor);
 
             headingText = CreateLabel(title, card, 34, accentColor, new Vector2(380f, 48f), new Vector2(0.5f, 1f), new Vector2(0f, -44f), FontStyle.Bold);

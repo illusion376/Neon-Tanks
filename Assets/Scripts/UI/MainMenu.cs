@@ -75,17 +75,108 @@ namespace DemoRicochet
             RectTransform safeArea = CreateRect("SafeArea", canvasObj.transform, Vector2.zero, Vector2.zero);
             safeArea.gameObject.AddComponent<UISafeArea>();
 
-            _layout = CreateRect("MenuLayout", safeArea, new Vector2(520f, 480f), Vector2.zero);
-            Image logo = CreateImage("MainMenuLogo", _layout, new Vector2(472f, 182f), new Vector2(0f, 146f));
+            _layout = CreateRect("MenuLayout", safeArea, new Vector2(520f, 580f), Vector2.zero);
+            Image logo = CreateImage("MainMenuLogo", _layout, new Vector2(472f, 182f), new Vector2(0f, 170f));
             logo.preserveAspect = true;
 
             _playButton = CreateMenuButton(_layout, "Play", "ИГРАТЬ", "MainMenuButtonCyan",
-                -19f, 23, Color.white, new Color(0f, 0.92f, 1f), LevelManager.StartCampaign);
+                32f, 23, Color.white, new Color(0f, 0.92f, 1f), LevelManager.StartCampaign);
             CreateMenuButton(_layout, "Endless", "БЕСКОНЕЧНЫЙ БОЙ", "MainMenuButtonMagenta",
-                -97f, 18, Color.white, new Color(0.88f, 0.25f, 1f), LevelManager.StartEndless);
+                -46f, 18, Color.white, new Color(0.88f, 0.25f, 1f), ShowRecords);
             CreateMenuButton(_layout, "Quit", "ВЫХОД", "MainMenuButtonMagenta",
-                -175f, 23, new Color(1f, 0.62f, 0.72f), new Color(1f, 0.12f, 0.56f), QuitGame);
+                -124f, 23, new Color(1f, 0.62f, 0.72f), new Color(1f, 0.12f, 0.56f), QuitGame);
+            GraphicsQualitySelector.Create(_layout, _font, new Vector2(0f, -236f));
+
+            _safeArea = safeArea;
         }
+
+        #region Рекорды бесконечного боя
+
+        private static readonly Color Cyan = new Color(0.12f, 0.92f, 1.0f);
+        private static readonly Color Magenta = new Color(1.0f, 0.18f, 0.62f);
+        private static readonly Color Muted = new Color(0.49f, 0.61f, 0.71f);
+
+        private RectTransform _safeArea;
+        private GameObject _recordsPanel;
+
+        // Окно строится заново при каждом открытии, чтобы показать свежие результаты
+        private void ShowRecords()
+        {
+            if (_recordsPanel != null) Destroy(_recordsPanel);
+            _recordsPanel = BuildRecordsPanel(_safeArea);
+            _layout.gameObject.SetActive(false);
+        }
+
+        private void HideRecords()
+        {
+            if (_recordsPanel != null) Destroy(_recordsPanel);
+            _layout.gameObject.SetActive(true);
+            EventSystem.current.SetSelectedGameObject(_playButton.gameObject);
+        }
+
+        // Окно «Последние игры» перед бесконечным боем: рекорд, последние результаты и кнопка старта
+        private GameObject BuildRecordsPanel(Transform parent)
+        {
+            RectTransform root = CreateRect("RecordsPanel", parent, new Vector2(560f, 640f), Vector2.zero);
+            Image card = root.gameObject.AddComponent<Image>();
+            card.sprite = Resources.Load<Sprite>(ArtPath + "PausePanel");
+            card.type = Image.Type.Sliced;
+            card.raycastTarget = true;
+
+            CreateText("Title", root, "ПОСЛЕДНИЕ ИГРЫ", 34, Color.white, new Vector2(480f, 50f), new Vector2(0f, 268f));
+            CreateText("Best", root, $"РЕКОРД:  {EndlessRecords.Best}  уничтожено", 18, Magenta, new Vector2(480f, 30f), new Vector2(0f, 228f));
+
+            var games = EndlessRecords.Recent;
+            if (games.Count == 0)
+            {
+                CreateText("Empty", root, "Пока нет сыгранных боёв.\nПервый результат появится здесь.", 18, Muted, new Vector2(460f, 80f), new Vector2(0f, 60f));
+            }
+            else
+            {
+                CreateText("HeaderKills", root, "УНИЧТОЖЕНО", 13, Muted, new Vector2(140f, 22f), new Vector2(-150f, 192f));
+                CreateText("HeaderTime", root, "ВРЕМЯ БОЯ", 13, Muted, new Vector2(120f, 22f), new Vector2(-10f, 192f));
+                CreateText("HeaderDate", root, "ДАТА И ВРЕМЯ", 13, Muted, new Vector2(180f, 22f), new Vector2(150f, 192f));
+
+                int best = EndlessRecords.Best;
+                for (int i = 0; i < games.Count; i++)
+                {
+                    EndlessRecords.Entry game = games[i];
+                    Color killsColor = game.kills == best && best > 0 ? Magenta : Cyan;
+
+                    Image row = CreateRect("Row_" + i, root, new Vector2(480f, 27f), new Vector2(0f, 160f - i * 30f)).gameObject.AddComponent<Image>();
+                    row.color = new Color(Cyan.r, Cyan.g, Cyan.b, i % 2 == 0 ? 0.07f : 0.03f);
+                    row.raycastTarget = false;
+
+                    CreateText("Kills", row.transform, game.kills.ToString(), 19, killsColor, new Vector2(140f, 27f), new Vector2(-150f, 0f));
+                    CreateText("Time", row.transform, game.DurationText, 15, Color.white, new Vector2(120f, 27f), new Vector2(-10f, 0f));
+                    CreateText("Date", row.transform, game.DateText, 15, Muted, new Vector2(180f, 27f), new Vector2(150f, 0f));
+                }
+            }
+
+            Button start = CreateMenuButton(root, "StartEndless", "В БОЙ", "MainMenuButtonCyan",
+                -194f, 23, Color.white, new Color(0f, 0.92f, 1f), LevelManager.StartEndless);
+            CreateMenuButton(root, "Back", "НАЗАД", "MainMenuButtonMagenta",
+                -268f, 23, new Color(1f, 0.62f, 0.72f), new Color(1f, 0.12f, 0.56f), HideRecords);
+            EventSystem.current.SetSelectedGameObject(start.gameObject);
+            return root.gameObject;
+        }
+
+        private Text CreateText(string name, Transform parent, string content, int size, Color color, Vector2 rectSize, Vector2 position)
+        {
+            Text text = CreateRect(name, parent, rectSize, position).gameObject.AddComponent<Text>();
+            text.font = _font;
+            text.text = content;
+            text.fontSize = size;
+            text.fontStyle = FontStyle.Bold;
+            text.color = color;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            text.raycastTarget = false;
+            return text;
+        }
+
+        #endregion
 
         private void Start()
         {
@@ -100,14 +191,21 @@ namespace DemoRicochet
 
         private void LateUpdate()
         {
-            RectTransform safeArea = (RectTransform)_layout.parent;
-            Vector2 available = safeArea.rect.size - Vector2.one * 32f;
-            Vector2 size = _layout.sizeDelta;
-            float scale = Mathf.Min(1f, Mathf.Min(available.x / size.x, available.y / size.y));
-            _layout.localScale = Vector3.one * Mathf.Max(0.1f, scale);
+            FitToSafeArea(_layout);
+            if (_recordsPanel != null) FitToSafeArea((RectTransform)_recordsPanel.transform);
 
             _fogTime += Time.unscaledDeltaTime * fogSpeed;
             UpdateAnimatedFog(_fogTime);
+        }
+
+        // Уменьшаем блок, если он не помещается на экран (маленькие телефоны, вырезы)
+        private static void FitToSafeArea(RectTransform block)
+        {
+            RectTransform safeArea = (RectTransform)block.parent;
+            Vector2 available = safeArea.rect.size - Vector2.one * 32f;
+            Vector2 size = block.sizeDelta;
+            float scale = Mathf.Min(1f, Mathf.Min(available.x / size.x, available.y / size.y));
+            block.localScale = Vector3.one * Mathf.Max(0.1f, scale);
         }
 
         private void BuildAnimatedFog(Transform parent)
